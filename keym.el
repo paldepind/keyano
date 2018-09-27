@@ -39,8 +39,16 @@
   (setq mc--default-cmds-to-run-for-all
 	(cons command mc--default-cmds-to-run-for-all)))
 
+(defun region-beginning-or-point ()
+  "Get the beginning of the region or point if region is inactive."
+  (if (mark) (region-beginning) (point)))
+
+(defun region-end-or-point ()
+  "Get the beginning of the region or point if region is inactive."
+  (if (mark) (region-end) (point)))
+
 (cl-defstruct object
-  find-next expand-left expand-right) ; find-previous matches)
+  find-next find-previous expand-left expand-right) ; find-previous matches)
 
 (defvar keym-state 'normal)
 
@@ -49,18 +57,17 @@
 (defvar line-object
   (make-object
    :find-next
-   (lambda (_start end)
-     (save-excursion
-       (goto-char end)
-       (forward-line)
-       (list (point) (line-end-position))))
+   (lambda ()
+     (forward-line)
+     (set-mark (point))
+     (end-of-line))
    :expand-left
-   (lambda (start _end)
+   (lambda ()
      (save-excursion
        (goto-char start)
        (line-beginning-position)))
    :expand-right
-   (lambda (_start end)
+   (lambda ()
      (save-excursion
        (goto-char end)
        (line-end-position)))))
@@ -68,37 +75,26 @@
 (defvar word-object
   (make-object
    :find-next
-   (lambda (_start end)
-     (let ((from 0))
-       (save-excursion
-	 (goto-char end)
-	 (forward-to-word 1)
-	 (setq from (point))
-	 (forward-word)
-	 (list from (point)))))))
+   (lambda ()
+     (forward-to-word 1)
+     (set-mark (point))
+     (forward-word))))
 
 (defvar parentheses-object
   (make-object
    :find-next
-   (lambda (_start end)
-     (save-excursion
-       (goto-char (+ end 1))
-       (let ((result (search-forward "(")))
-	 (if result
-	     (progn
-	       (backward-char)
-	       (forward-sexp)
-	       (list (- result 1) (point)))
-	   nil))))))
+   (lambda ()
+     (forward-char)
+     (when (search-forward "(")
+       (backward-char)
+       (set-mark (point))
+       (forward-sexp)))))
 
 (defun keym--object-command (object)
   "Execute an object command with the given OBJECT."
-  (cl-destructuring-bind
-      (from to) (funcall (object-find-next object) (point) (point))
-    (progn
-      (goto-char from)
-      (set-mark to)
-      (setq keym-last-object object))))
+  (goto-char (region-beginning-or-point))
+  (funcall (object-find-next object))
+  (setq keym-last-object object))
 
 (defun keym-line ()
   "Command representing a line object."
@@ -108,7 +104,7 @@
 (cmd-to-run-for-all 'keym-line)
 
 (defun keym-word ()
-  "Command representing a line object."
+  "Command representing a word object."
   (interactive)
   (keym--object-command word-object))
 
@@ -122,7 +118,14 @@
 (cmd-to-run-for-all 'keym-parentheses)
 
 (defun keym-next ()
-  "Select the next occurrence of the current object."
+  "Move to the next occurrence of the current object."
+  (interactive)
+  (keym--object-command keym-last-object))
+
+(cmd-to-run-for-all 'keym-next)
+
+(defun keym-prev ()
+  "Move to the next occurrence of the current object."
   (interactive)
   (keym--object-command keym-last-object))
 
@@ -198,13 +201,15 @@ Place the cursor at the right side of the region."
 (define-minor-mode keym-command-mode
   "Keym mode"
   :lighter " cmd"
-  :keymap keym-command-mode-map)
+  :keymap keym-command-mode-map
+  (setq cursor-type 'box))
 
 (define-minor-mode keym-insert-mode
   "Keym mode"
   :lighter " ins"
   :keymap
   '(((kbd "q") . keym-insert-to-command)
-    (([escape]) . keym-insert-to-command)))
+    (([escape]) . keym-insert-to-command))
+  (setq cursor-type 'bar))
 
 ;;; keym.el ends here
