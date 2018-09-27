@@ -29,8 +29,22 @@
 (require 'cl-lib)
 (require 'multiple-cursors)
 
+(defun cmd-to-run-once (command)
+  "Add COMMAND to the list of commands to run once."
+  (setq mc--default-cmds-to-run-once
+	(cons command mc--default-cmds-to-run-once)))
+
+(defun cmd-to-run-for-all (command)
+  "Add COMMAND to the list of commands to run for all."
+  (setq mc--default-cmds-to-run-for-all
+	(cons command mc--default-cmds-to-run-for-all)))
+
 (cl-defstruct object
   find-next expand-left expand-right) ; find-previous matches)
+
+(defvar keym-state 'normal)
+
+(defvar keym-last-object nil)
 
 (defvar line-object
   (make-object
@@ -77,42 +91,120 @@
 	       (list (- result 1) (point)))
 	   nil))))))
 
+(defun keym--object-command (object)
+  "Execute an object command with the given OBJECT."
+  (cl-destructuring-bind
+      (from to) (funcall (object-find-next object) (point) (point))
+    (progn
+      (goto-char from)
+      (set-mark to)
+      (setq keym-last-object object))))
+
 (defun keym-line ()
   "Command representing a line object."
   (interactive)
-  (cl-destructuring-bind
-      (from to) (funcall (object-find-next line-object) (point) (point))
-    (progn
-      (goto-char from)
-      (set-mark to))))
+  (keym--object-command line-object))
+
+(cmd-to-run-for-all 'keym-line)
 
 (defun keym-word ()
-  "Command representing a word object."
+  "Command representing a line object."
   (interactive)
-  (cl-destructuring-bind
-      (from to) (funcall (object-find-next word-object) (point) (point))
-    (progn
-      (goto-char from)
-      (set-mark to))))
+  (keym--object-command word-object))
+
+(cmd-to-run-for-all 'keym-word)
 
 (defun keym-parentheses ()
-  "Command representing a word object."
+  "Command representing a line object."
   (interactive)
-  (cl-destructuring-bind
-      (from to) (funcall (object-find-next parentheses-object) (point) (point))
-    (progn
-      (goto-char from)
-      (set-mark to))))
+  (keym--object-command parentheses-object))
 
-(defvar keym-mode-map (make-sparse-keymap)
+(cmd-to-run-for-all 'keym-parentheses)
+
+(defun keym-next ()
+  "Select the next occurrence of the current object."
+  (interactive)
+  (keym--object-command keym-last-object))
+
+(cmd-to-run-for-all 'keym-next)
+
+(defun keym-add-next ()
+  "Select the next occurrence of the current object."
+  (interactive)
+  (mc/create-fake-cursor-at-point)
+  (keym-next)
+  (mc/maybe-multiple-cursors-mode))
+
+(cmd-to-run-once 'keym-add-next)
+
+(defvar keym-command-mode-map (make-sparse-keymap)
   "Keymap used for normal mode.")
 
-(define-key keym-mode-map "w" 'keym-word)
-(define-key keym-mode-map "l" 'keym-line)
-(define-key keym-mode-map "p" 'keym-parentheses)
+(define-key keym-command-mode-map "w" 'keym-word)
+(define-key keym-command-mode-map "l" 'keym-line)
+(define-key keym-command-mode-map "p" 'keym-parentheses)
+(define-key keym-command-mode-map "i" 'keym-insert-left)
+(define-key keym-command-mode-map "I" 'keym-insert-right)
+(define-key keym-command-mode-map "c" 'keym-change)
+(define-key keym-command-mode-map "n" 'keym-next)
+(define-key keym-command-mode-map "N" 'keym-add-next)
+(define-key keym-command-mode-map (kbd "C->") 'mc/mark-next-like-this)
 
-(define-minor-mode keym-mode
+(defun keym-command-to-insert ()
+  "Switch from insert state to command state."
+  (setq keym-state 'insert)
+  (keym-command-mode -1)
+  (keym-insert-mode 1))
+
+(defun keym-insert-to-command ()
+  "Switch from insert state to command state."
+  (interactive)
+  (setq keym-state 'command)
+  (keym-insert-mode -1)
+  (keym-command-mode 1))
+
+(cmd-to-run-once 'keym-insert-to-command)
+
+(defun keym-insert-left ()
+  "Switch from insert state to command state.
+Place the cursor at the left side of the region."
+  (interactive)
+  (let ((n (min (point) (mark))))
+    (goto-char n)
+    (set-mark n)
+    (keym-command-to-insert)))
+
+(cmd-to-run-for-all 'keym-insert-left)
+
+(defun keym-insert-right ()
+  "Switch from insert state to command state.
+Place the cursor at the right side of the region."
+  (interactive)
+  (let ((n (max (point) (mark))))
+    (goto-char n)
+    (set-mark n)
+    (keym-command-to-insert)))
+
+(cmd-to-run-for-all 'keym-insert-right)
+
+(defun keym-change ()
+  "Kill the current selections and enters insert state."
+  (interactive)
+  (kill-region 0 0 t)
+  (keym-command-to-insert))
+
+(cmd-to-run-for-all 'keym-change)
+
+(define-minor-mode keym-command-mode
   "Keym mode"
-  :keymap keym-mode-map)
+  :lighter " cmd"
+  :keymap keym-command-mode-map)
+
+(define-minor-mode keym-insert-mode
+  "Keym mode"
+  :lighter " ins"
+  :keymap
+  '(((kbd "q") . keym-insert-to-command)
+    (([escape]) . keym-insert-to-command)))
 
 ;;; keym.el ends here
