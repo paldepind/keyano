@@ -58,19 +58,18 @@
   (make-object
    :find-next
    (lambda ()
-     (forward-line)
+     (forward-line 1)
+     (set-mark (point))
+     (end-of-line))
+   :find-previous
+   (lambda ()
+     (forward-line -1)
      (set-mark (point))
      (end-of-line))
    :expand-left
-   (lambda ()
-     (save-excursion
-       (goto-char start)
-       (line-beginning-position)))
+   (lambda () (beginning-of-line))
    :expand-right
-   (lambda ()
-     (save-excursion
-       (goto-char end)
-       (line-end-position)))))
+   (lambda () (end-of-line))))
 
 (defvar word-object
   (make-object
@@ -78,7 +77,16 @@
    (lambda ()
      (forward-to-word 1)
      (set-mark (point))
-     (forward-word))))
+     (forward-word))
+   :find-previous
+   (lambda ()
+     (forward-to-word -1)
+     (set-mark (point))
+     (backward-word))
+   :expand-left
+   (lambda () (backward-word))
+   :expand-right
+   (lambda () (forward-word))))
 
 (defvar parentheses-object
   (make-object
@@ -87,6 +95,12 @@
      (forward-char)
      (when (search-forward "(")
        (backward-char)
+       (set-mark (point))
+       (forward-sexp)))
+   :find-previous
+   (lambda ()
+     (backward-char)
+     (when (search-backward "(")
        (set-mark (point))
        (forward-sexp)))))
 
@@ -120,16 +134,30 @@
 (defun keym-next ()
   "Move to the next occurrence of the current object."
   (interactive)
-  (keym--object-command keym-last-object))
+  (when keym-last-object
+    (goto-char (region-beginning-or-point))
+    (funcall (object-find-next keym-last-object))))
 
 (cmd-to-run-for-all 'keym-next)
 
-(defun keym-prev ()
-  "Move to the next occurrence of the current object."
+(defun keym-previous ()
+  "Move to the previous occurrence of the current object."
   (interactive)
-  (keym--object-command keym-last-object))
+  (when keym-last-object
+    (goto-char (region-beginning-or-point))
+    (funcall (object-find-previous keym-last-object))))
 
-(cmd-to-run-for-all 'keym-next)
+(cmd-to-run-for-all 'keym-prev)
+
+(defun keym-expand ()
+  "Expand the current selection."
+  (interactive)
+  (when keym-last-object
+    (when (< (point) (mark))
+      (exchange-point-and-mark))
+    (funcall (object-expand-right keym-last-object))
+    (exchange-point-and-mark)
+    (funcall (object-expand-left keym-last-object))))
 
 (defun keym-add-next ()
   "Select the next occurrence of the current object."
@@ -149,8 +177,10 @@
 (define-key keym-command-mode-map "i" 'keym-insert-left)
 (define-key keym-command-mode-map "I" 'keym-insert-right)
 (define-key keym-command-mode-map "c" 'keym-change)
-(define-key keym-command-mode-map "n" 'keym-next)
-(define-key keym-command-mode-map "N" 'keym-add-next)
+(define-key keym-command-mode-map "e" 'keym-next)
+(define-key keym-command-mode-map "E" 'keym-add-next)
+(define-key keym-command-mode-map "i" 'keym-previous)
+(define-key keym-command-mode-map "f" 'keym-expand)
 (define-key keym-command-mode-map (kbd "C->") 'mc/mark-next-like-this)
 
 (defun keym-command-to-insert ()
