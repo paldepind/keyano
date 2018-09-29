@@ -41,11 +41,11 @@
 
 (defun region-beginning-or-point ()
   "Get the beginning of the region or point if region is inactive."
-  (if (mark) (region-beginning) (point)))
+  (if mark-active (region-beginning) (point)))
 
 (defun region-end-or-point ()
   "Get the beginning of the region or point if region is inactive."
-  (if (mark) (region-end) (point)))
+  (if mark-active (region-end) (point)))
 
 (cl-defstruct object
   find find-start find-end) ; matches)
@@ -171,11 +171,12 @@ object struct."
   "Expand the current selection."
   (interactive)
   (when keym-last-object
-    (when (< (mark) (point))
-      (exchange-point-and-mark))
-    (funcall (object-find-start keym-last-object) -1)
-    (exchange-point-and-mark)
-    (funcall (object-find-end keym-last-object) 1)))
+    (let ((to (region-end-or-point)))
+      (goto-char (region-beginning-or-point))
+      (funcall (object-find-start keym-last-object) -1)
+      (set-mark (point))
+      (goto-char to)
+      (funcall (object-find-end keym-last-object) 1))))
 
 (defun keym-include-next ()
   "Grow the selection to include the next occurrence of the curent object."
@@ -205,7 +206,7 @@ object struct."
 (cmd-to-run-once 'keym-add-previous)
 
 (defvar keym-command-mode-map (make-sparse-keymap)
-  "Keymap used for normal mode.")
+  "Keymap used for command mode.")
 
 ;; Left-hand side
 
@@ -271,7 +272,7 @@ object struct."
   "Switch from insert state to command state.
 Place the cursor at the left side of the region."
   (interactive)
-  (let ((n (min (point) (mark))))
+  (let ((n (region-beginning-or-point)))
     (goto-char n)
     (set-mark n)
     (keym-command-to-insert)))
@@ -282,7 +283,7 @@ Place the cursor at the left side of the region."
   "Switch from insert state to command state.
 Place the cursor at the right side of the region."
   (interactive)
-  (let ((n (max (point) (mark))))
+  (let ((n (region-end-or-point)))
     (goto-char n)
     (set-mark n)
     (keym-command-to-insert)))
@@ -314,6 +315,12 @@ Place the cursor at the right side of the region."
   '(((kbd "q") . keym-insert-to-command)
     (([escape]) . keym-insert-to-command))
   (setq cursor-type 'bar))
+
+(define-globalized-minor-mode keym-mode keym-command-mode
+  (lambda ()
+    (if (minibufferp)
+	(keym-insert-mode t)
+      (keym-command-mode t))))
 
 (provide 'keym)
 
