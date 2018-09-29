@@ -48,52 +48,49 @@
   (if (mark) (region-end) (point)))
 
 (cl-defstruct object
-  find expand-left expand-right) ; matches)
+  find find-start find-end) ; matches)
 
 (defvar keym-state 'normal)
 
 (defvar keym-last-object nil)
 
-(defvar char-object
+(defun create-regexp-object (full start end)
+  "Create an object based on regular expressions.
+FULL is a regexp that matches the entire object, START must match
+the start of the object, and END matches the end.  Returns an
+object struct."
   (make-object
    :find
    (lambda (n &optional limit)
-     (set-mark (point))
-     (forward-char n))
-   :expand-left
-   (lambda () (backward-char))
-   :expand-right
-   (lambda () (forward-char))))
-
-(defvar word-object
-  (make-object
-   :find
-   (lambda (n &optional limit)
-     (when (search-forward-regexp "\\<\\w*\\>" limit t n)
+     (when (search-forward-regexp full limit t n)
        (set-mark (match-beginning 0))
        (goto-char (match-end 0))))
-   :expand-left
-   (lambda () (backward-word))
-   :expand-right
-   (lambda () (forward-word))))
+   :find-start
+   (lambda (n &optional limit)
+     (when (search-forward-regexp start limit t n)
+       (goto-char (match-beginning 0))))
+   :find-end
+   (lambda (n &optional limit)
+     (when (search-forward-regexp end limit t n)
+       (goto-char (match-end 0))))))
+
+(defvar char-object
+  (create-regexp-object "." "." "."))
+
+(defvar word-object
+  (create-regexp-object "\\<\\w*\\>" "\\<" "\\w\\>"))
+
+(defvar number-object
+  (create-regexp-object "\\<[0-9]+\\(\\.[0-9]+\\)?\\>" "\\<[0-9]" "[0-9]\\>"))
 
 (defvar line-object
-  (make-object
-   :find
-   (lambda (n &optional limit)
-     (forward-line n)
-     (set-mark (point))
-     (end-of-line))
-   :expand-left
-   (lambda () (beginning-of-line))
-   :expand-right
-   (lambda () (end-of-line))))
+  (create-regexp-object "^.*$" "^." ".$"))
 
 (defvar parentheses-object
   (make-object
    :find
    (lambda (n &optional limit)
-     (when (search-forward "(" nil t n)
+     (when (search-forward "(" limit t n)
        (goto-char (match-beginning 0))
        (set-mark (point))
        (forward-sexp)))))
@@ -115,6 +112,11 @@
   "Command representing a word object."
   (interactive)
   (keym--object-command word-object))
+
+(defun keym-number ()
+  "Command representing a number object."
+  (interactive)
+  (keym--object-command number-object))
 
 (cmd-to-run-for-all 'keym-word)
 
@@ -169,11 +171,20 @@
   "Expand the current selection."
   (interactive)
   (when keym-last-object
-    (when (< (point) (mark))
+    (when (< (mark) (point))
       (exchange-point-and-mark))
-    (funcall (object-expand-right keym-last-object))
+    (funcall (object-find-start keym-last-object) -1)
     (exchange-point-and-mark)
-    (funcall (object-expand-left keym-last-object))))
+    (funcall (object-find-end keym-last-object) 1)))
+
+(defun keym-include-next ()
+  "Grow the selection to include the next occurrence of the curent object."
+  (interactive)
+  (let ((from (region-beginning-or-point)))
+    (keym-next-after)
+    (set-mark from)))
+
+(cmd-to-run-for-all 'keym-include-next)
 
 (defun keym-add-next ()
   "Select the next occurrence of the current object."
@@ -199,6 +210,7 @@
 ;; Left-hand side
 
 (define-key keym-command-mode-map "p" 'keym-parentheses)
+(define-key keym-command-mode-map "w" 'keym-number)
 
 (define-key keym-command-mode-map "a" 'keym-char)
 (define-key keym-command-mode-map "r" 'keym-word)
@@ -214,10 +226,12 @@
 
 (define-key keym-command-mode-map "l" 'keym-insert-left)
 (define-key keym-command-mode-map "u" 'keym-insert-right)
+(define-key keym-command-mode-map ";" 'comment-or-uncomment-region)
 
 (define-key keym-command-mode-map "n" 'keym-next-in)
+(define-key keym-command-mode-map "N" 'keym-include-next)
 (define-key keym-command-mode-map (kbd "C-n") 'keym-next-after)
-(define-key keym-command-mode-map "N" 'keym-add-next)
+(define-key keym-command-mode-map (kbd "M-n") 'keym-add-next)
 (define-key keym-command-mode-map "e" 'keym-previous)
 (define-key keym-command-mode-map (kbd "C-e") 'keym-previous)
 (define-key keym-command-mode-map "E" 'keym-previous)
@@ -289,8 +303,9 @@ Place the cursor at the right side of the region."
   "Keym command mode"
   :lighter " cmd"
   :keymap keym-command-mode-map
+  :global t
   (delete-selection-mode 1)
-  (setq cursor-type 'bar))
+  (setq cursor-type 'box))
 
 (define-minor-mode keym-insert-mode
   "Keym insert mode"
@@ -299,5 +314,7 @@ Place the cursor at the right side of the region."
   '(((kbd "q") . keym-insert-to-command)
     (([escape]) . keym-insert-to-command))
   (setq cursor-type 'bar))
+
+(provide 'keym)
 
 ;;; keym.el ends here
