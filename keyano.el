@@ -1,4 +1,4 @@
-;;; keym.el --- keym editing -*- lexical-binding: t; -*-
+;;; keyano.el --- keyano editing -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2018 Simon Friis Vindum
 
@@ -22,7 +22,7 @@
 
 ;;; Commentary:
 
-;; Description of keym.el here.
+;; Description of keyano.el here.
 
 ;;; Code:
 
@@ -50,11 +50,11 @@
 (cl-defstruct object
   find find-start find-end) ; matches)
 
-(defvar keym--current-object nil)
+(defvar keyano--current-object nil)
 
-(defun keym--object ()
+(defun keyano--object ()
   "Get the current object."
-  (if keym--current-object keym--current-object word-object))
+  (if keyano--current-object keyano--current-object word-object))
 
 (defun create-regexp-object (full start end)
   "Create an object based on regular expressions.
@@ -97,46 +97,46 @@ object struct."
        (set-mark (point))
        (forward-sexp)))))
 
-(defun keym--object-command (object)
+(defun keyano--object-command (object)
   "Execute an object command with the given OBJECT."
   ;; (goto-char (region-beginning-or-point))
   ;; (funcall (object-find object) 1)
-  (setq keym--current-object object))
+  (setq keyano--current-object object))
 
-(defun keym-char ()
+(defun keyano-char ()
   "Command representing a char object."
   (interactive)
-  (keym--object-command char-object))
+  (keyano--object-command char-object))
 
-(cmd-to-run-for-all 'keym-char)
+(cmd-to-run-for-all 'keyano-char)
 
-(defun keym-word ()
+(defun keyano-word ()
   "Command representing a word object."
   (interactive)
-  (keym--object-command word-object))
+  (keyano--object-command word-object))
 
-(defun keym-number ()
+(defun keyano-number ()
   "Command representing a number object."
   (interactive)
-  (keym--object-command number-object))
+  (keyano--object-command number-object))
 
-(cmd-to-run-for-all 'keym-word)
+(cmd-to-run-for-all 'keyano-word)
 
-(defun keym-line ()
+(defun keyano-line ()
   "Command representing a line object."
   (interactive)
-  (keym--object-command line-object))
+  (keyano--object-command line-object))
 
-(cmd-to-run-for-all 'keym-line)
+(cmd-to-run-for-all 'keyano-line)
 
-(defun keym-parentheses ()
+(defun keyano-parentheses ()
   "Command representing a line object."
   (interactive)
-  (keym--object-command parentheses-object))
+  (keyano--object-command parentheses-object))
 
-(cmd-to-run-for-all 'keym-parentheses)
+(cmd-to-run-for-all 'keyano-parentheses)
 
-(defun keym-next-in (&optional arg)
+(defun keyano-next-in (&optional arg)
   "Move to the ARGth occurrence of the current object.
 Starts from the beginning of the selection."
   (interactive "p")
@@ -144,212 +144,212 @@ Starts from the beginning of the selection."
   (let ((orig-from (region-beginning-or-point))
 	(orig-to (region-end-or-point)))
     (goto-char (region-beginning-or-point))
-    (funcall (object-find (keym--object)) arg)
+    (funcall (object-find (keyano--object)) arg)
     (when (and (= orig-from (region-beginning-or-point))
 	       (= orig-to (region-end-or-point)))
       (goto-char (+ (region-beginning-or-point) arg))
-      (funcall (object-find (keym--object)) arg))))
+      (funcall (object-find (keyano--object)) arg))))
 
-(cmd-to-run-for-all 'keym-next-in)
+(cmd-to-run-for-all 'keyano-next-in)
 
-(defun keym-next-after ()
+(defun keyano-next-after ()
   "Move to the next occurrence of the current object after the selection."
   (interactive)
   (goto-char (region-end-or-point))
-  (funcall (object-find (keym--object)) 1))
+  (funcall (object-find (keyano--object)) 1))
 
-(cmd-to-run-for-all 'keym-next-after)
+(cmd-to-run-for-all 'keyano-next-after)
 
-(defun keym-previous (&optional arg)
+(defun keyano-previous (&optional arg)
   "Move backwards to the ARGth occurrence of the current object.
 Starts from the beginning of the selection."
   (interactive "p")
-  (keym-next-in (if arg (- arg) -1)))
+  (keyano-next-in (if arg (- arg) -1)))
 
-(cmd-to-run-for-all 'keym-previous)
+(cmd-to-run-for-all 'keyano-previous)
 
-(defun keym-expand ()
+(defun keyano-expand ()
   "Expand the current selection."
   (interactive)
   (let ((to (region-end-or-point)))
     (goto-char (region-beginning-or-point))
-    (funcall (object-find-start (keym--object)) -1)
+    (funcall (object-find-start (keyano--object)) -1)
     (set-mark (point))
     (goto-char to)
-    (funcall (object-find-end (keym--object)) 1)))
+    (funcall (object-find-end (keyano--object)) 1)))
 
-(cmd-to-run-for-all 'keym-expand)
+(cmd-to-run-for-all 'keyano-expand)
 
-(defun keym-expand-backward ()
+(defun keyano-expand-backward ()
   "Expand the selection to the previous start of the current object."
   (interactive)
   (let ((to (region-end-or-point)))
     (goto-char (region-beginning-or-point))
     (set-mark to)
-    (funcall (object-find-start (keym--object)) -1)))
+    (funcall (object-find-start (keyano--object)) -1)))
 
-(cmd-to-run-for-all 'keym-expand-backward)
+(cmd-to-run-for-all 'keyano-expand-backward)
 
-(defun keym-expand-forward ()
+(defun keyano-expand-forward ()
   "Expand the selection to the next end of the current object."
   (interactive)
   (let ((from (region-beginning-or-point)))
     (goto-char (region-end-or-point))
     (set-mark from)
-    (funcall (object-find-end (keym--object)) 1)))
+    (funcall (object-find-end (keyano--object)) 1)))
 
-(cmd-to-run-for-all 'keym-expand-forward)
+(cmd-to-run-for-all 'keyano-expand-forward)
 
 ;; This command is probably not very useful as it is very close in behavior to
-;; `keym-expand-forward'.
-(defun keym-include-next ()
+;; `keyano-expand-forward'.
+(defun keyano-include-next ()
   "Grow the selection to include the next occurrence of the curent object."
   (interactive)
   (let ((from (region-beginning-or-point)))
-    (keym-next-after)
+    (keyano-next-after)
     (set-mark from)))
 
-(cmd-to-run-for-all 'keym-include-next)
+(cmd-to-run-for-all 'keyano-include-next)
 
-(defun keym-add-next ()
+(defun keyano-add-next ()
   "Select the next occurrence of the current object."
   (interactive)
   (mc/create-fake-cursor-at-point)
-  (keym-next-after)
+  (keyano-next-after)
   (mc/maybe-multiple-cursors-mode))
 
-(cmd-to-run-once 'keym-add-next)
+(cmd-to-run-once 'keyano-add-next)
 
-(defun keym-add-previous ()
+(defun keyano-add-previous ()
   "Select the next occurrence of the current object."
   (interactive)
   (mc/create-fake-cursor-at-point)
-  (keym-previous)
+  (keyano-previous)
   (mc/maybe-multiple-cursors-mode))
 
-(cmd-to-run-once 'keym-add-previous)
+(cmd-to-run-once 'keyano-add-previous)
 
-(defvar keym-command-mode-map (make-sparse-keymap)
-  "Keymap used for command mode.")
+(defvar keyano-command-mode-map (make-sparse-keymap)
+  "Keyanoap used for command mode.")
 
-(define-key keym-command-mode-map (kbd "1") 'digit-argument)
-(define-key keym-command-mode-map (kbd "2") 'digit-argument)
-(define-key keym-command-mode-map (kbd "3") 'digit-argument)
-(define-key keym-command-mode-map (kbd "4") 'digit-argument)
-(define-key keym-command-mode-map (kbd "5") 'digit-argument)
-(define-key keym-command-mode-map (kbd "6") 'digit-argument)
-(define-key keym-command-mode-map (kbd "7") 'digit-argument)
-(define-key keym-command-mode-map (kbd "8") 'digit-argument)
-(define-key keym-command-mode-map (kbd "9") 'digit-argument)
-(define-key keym-command-mode-map (kbd "-") 'negative-argument)
+(define-key keyano-command-mode-map (kbd "1") 'digit-argument)
+(define-key keyano-command-mode-map (kbd "2") 'digit-argument)
+(define-key keyano-command-mode-map (kbd "3") 'digit-argument)
+(define-key keyano-command-mode-map (kbd "4") 'digit-argument)
+(define-key keyano-command-mode-map (kbd "5") 'digit-argument)
+(define-key keyano-command-mode-map (kbd "6") 'digit-argument)
+(define-key keyano-command-mode-map (kbd "7") 'digit-argument)
+(define-key keyano-command-mode-map (kbd "8") 'digit-argument)
+(define-key keyano-command-mode-map (kbd "9") 'digit-argument)
+(define-key keyano-command-mode-map (kbd "-") 'negative-argument)
 
 ;; Left-hand side
 
-(define-key keym-command-mode-map "p" 'keym-parentheses)
-(define-key keym-command-mode-map "w" 'keym-number)
+(define-key keyano-command-mode-map "p" 'keyano-parentheses)
+(define-key keyano-command-mode-map "w" 'keyano-number)
 
-(define-key keym-command-mode-map "a" 'keym-char)
-(define-key keym-command-mode-map "r" 'keym-word)
-(define-key keym-command-mode-map "s" 'keym-line)
-(define-key keym-command-mode-map "t" 'keym-change)
+(define-key keyano-command-mode-map "a" 'keyano-char)
+(define-key keyano-command-mode-map "r" 'keyano-word)
+(define-key keyano-command-mode-map "s" 'keyano-line)
+(define-key keyano-command-mode-map "t" 'keyano-change)
 
-(define-key keym-command-mode-map "z" 'undo)
-(define-key keym-command-mode-map "x" 'kill-region)
-(define-key keym-command-mode-map "c" 'kill-ring-save)
-(define-key keym-command-mode-map "v" 'yank)
+(define-key keyano-command-mode-map "z" 'undo)
+(define-key keyano-command-mode-map "x" 'kill-region)
+(define-key keyano-command-mode-map "c" 'kill-ring-save)
+(define-key keyano-command-mode-map "v" 'yank)
 
 ;; Right-hand side
 
-(define-key keym-command-mode-map "l" 'keym-insert-left)
-(define-key keym-command-mode-map "u" 'keym-insert-right)
-(define-key keym-command-mode-map ";" 'comment-or-uncomment-region)
+(define-key keyano-command-mode-map "l" 'keyano-insert-left)
+(define-key keyano-command-mode-map "u" 'keyano-insert-right)
+(define-key keyano-command-mode-map ";" 'comment-or-uncomment-region)
 
-(define-key keym-command-mode-map "e" 'keym-next-in)
-(define-key keym-command-mode-map "E" 'keym-expand-forward)
-(define-key keym-command-mode-map (kbd "C-e") 'keym-next-after)
-(define-key keym-command-mode-map (kbd "M-e") 'keym-add-next)
-(define-key keym-command-mode-map "n" 'keym-previous)
-(define-key keym-command-mode-map (kbd "C-n") 'keym-previous)
-(define-key keym-command-mode-map "N" 'keym-expand-backward)
-(define-key keym-command-mode-map "k" 'keym-all-in)
+(define-key keyano-command-mode-map "e" 'keyano-next-in)
+(define-key keyano-command-mode-map "E" 'keyano-expand-forward)
+(define-key keyano-command-mode-map (kbd "C-e") 'keyano-next-after)
+(define-key keyano-command-mode-map (kbd "M-e") 'keyano-add-next)
+(define-key keyano-command-mode-map "n" 'keyano-previous)
+(define-key keyano-command-mode-map (kbd "C-n") 'keyano-previous)
+(define-key keyano-command-mode-map "N" 'keyano-expand-backward)
+(define-key keyano-command-mode-map "k" 'keyano-all-in)
 
-(define-key keym-command-mode-map (kbd "C->") 'mc/mark-next-like-this)
+(define-key keyano-command-mode-map (kbd "C->") 'mc/mark-next-like-this)
 
-(defun keym-all-in ()
+(defun keyano-all-in ()
   "Select all of the current object in the current selection."
   (interactive)
   (let ((to (region-end-or-point))
-	(find (object-find (keym--object))))
+	(find (object-find (keyano--object))))
     (goto-char (region-beginning-or-point))
     (while (funcall find 1 to)
       (mc/create-fake-cursor-at-point))
       (mc/maybe-multiple-cursors-mode)))
 
-(cmd-to-run-for-all 'keym-all-in)
+(cmd-to-run-for-all 'keyano-all-in)
 
-(defun keym-command-to-insert ()
+(defun keyano-command-to-insert ()
   "Switch from insert state to command state."
-  (keym-command-mode -1)
-  (keym-insert-mode 1))
+  (keyano-command-mode -1)
+  (keyano-insert-mode 1))
 
-(defun keym-insert-to-command ()
+(defun keyano-insert-to-command ()
   "Switch from insert state to command state."
   (interactive)
-  (keym-insert-mode -1)
-  (keym-command-mode 1))
+  (keyano-insert-mode -1)
+  (keyano-command-mode 1))
 
-(cmd-to-run-once 'keym-insert-to-command)
+(cmd-to-run-once 'keyano-insert-to-command)
 
-(defun keym-insert-left ()
+(defun keyano-insert-left ()
   "Switch from insert state to command state.
 Place the cursor at the left side of the region."
   (interactive)
   (goto-char (region-beginning-or-point))
-  (keym-command-to-insert))
+  (keyano-command-to-insert))
 
-(cmd-to-run-for-all 'keym-insert-left)
+(cmd-to-run-for-all 'keyano-insert-left)
 
-(defun keym-insert-right ()
+(defun keyano-insert-right ()
   "Switch from insert state to command state.
 Place the cursor at the right side of the region."
   (interactive)
   (goto-char (region-end-or-point))
-  (keym-command-to-insert))
+  (keyano-command-to-insert))
 
-(cmd-to-run-for-all 'keym-insert-right)
+(cmd-to-run-for-all 'keyano-insert-right)
 
 (cmd-to-run-for-all 'kill-region)
 
-(defun keym-change ()
+(defun keyano-change ()
   "Kill the current selections and enters insert state."
   (interactive)
   (kill-region 0 0 t)
-  (keym-command-to-insert))
+  (keyano-command-to-insert))
 
-(cmd-to-run-for-all 'keym-change)
+(cmd-to-run-for-all 'keyano-change)
 
-(define-minor-mode keym-command-mode
-  "Keym command mode"
+(define-minor-mode keyano-command-mode
+  "Keyano command mode"
   :lighter " cmd"
-  :keymap keym-command-mode-map
+  :keyanoap keyano-command-mode-map
   (delete-selection-mode 1)
   (setq cursor-type 'box))
 
-(define-minor-mode keym-insert-mode
-  "Keym insert mode"
+(define-minor-mode keyano-insert-mode
+  "Keyano insert mode"
   :lighter " ins"
-  :keymap
-  `((,(kbd "C-n") . keym-insert-to-command)
-    ([escape] . keym-insert-to-command))
+  :keyanoap
+  `((,(kbd "C-n") . keyano-insert-to-command)
+    ([escape] . keyano-insert-to-command))
   (setq cursor-type 'bar)
   (deactivate-mark))
 
-(define-globalized-minor-mode keym-mode keym-command-mode
+(define-globalized-minor-mode keyano-mode keyano-command-mode
   (lambda ()
     (if (minibufferp)
-	(keym-insert-mode t)
-      (keym-command-mode t))))
+	(keyano-insert-mode t)
+      (keyano-command-mode t))))
 
-(provide 'keym)
+(provide 'keyano)
 
-;;; keym.el ends here
+;;; keyano.el ends here

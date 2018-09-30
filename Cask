@@ -1,7 +1,7 @@
 (source gnu)
 (source melpa)
 
-(package-file "keym.el")
+(package-file "keyano.el")
 
 (depends-on "multiple-cursors")
 

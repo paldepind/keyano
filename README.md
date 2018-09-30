@@ -1,4 +1,4 @@
-# keym
+# Keyano
 
 ## Bindings
 
