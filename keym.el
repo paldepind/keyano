@@ -50,9 +50,11 @@
 (cl-defstruct object
   find find-start find-end) ; matches)
 
-(defvar keym-state 'normal)
+(defvar keym--current-object nil)
 
-(defvar keym-last-object nil)
+(defun keym--object ()
+  "Get the current object."
+  (if keym--current-object keym--current-object word-object))
 
 (defun create-regexp-object (full start end)
   "Create an object based on regular expressions.
@@ -99,7 +101,7 @@ object struct."
   "Execute an object command with the given OBJECT."
   ;; (goto-char (region-beginning-or-point))
   ;; (funcall (object-find object) 1)
-  (setq keym-last-object object))
+  (setq keym--current-object object))
 
 (defun keym-char ()
   "Command representing a char object."
@@ -134,71 +136,67 @@ object struct."
 
 (cmd-to-run-for-all 'keym-parentheses)
 
-(defun keym-next-in ()
-  "Move to the next occurrence of the current object in the selection."
-  (interactive)
-  (when keym-last-object
-    (let ((orig-from (region-beginning-or-point))
-	  (orig-to (region-end-or-point)))
-      (goto-char (region-beginning-or-point))
-      (funcall (object-find keym-last-object) 1)
-      (when (and (= orig-from (region-beginning-or-point))
-		 (= orig-to (region-end-or-point)))
-	(goto-char (+ (region-beginning-or-point) 1))
-	(funcall (object-find keym-last-object) 1)))))
+(defun keym-next-in (&optional arg)
+  "Move to the ARGth occurrence of the current object.
+Starts from the beginning of the selection."
+  (interactive "p")
+  (when (not arg) (setq arg 1))
+  (let ((orig-from (region-beginning-or-point))
+	(orig-to (region-end-or-point)))
+    (goto-char (region-beginning-or-point))
+    (funcall (object-find (keym--object)) arg)
+    (when (and (= orig-from (region-beginning-or-point))
+	       (= orig-to (region-end-or-point)))
+      (goto-char (+ (region-beginning-or-point) arg))
+      (funcall (object-find (keym--object)) arg))))
 
 (cmd-to-run-for-all 'keym-next-in)
 
 (defun keym-next-after ()
   "Move to the next occurrence of the current object after the selection."
   (interactive)
-  (when keym-last-object
-    (goto-char (region-end-or-point))
-    (funcall (object-find keym-last-object) 1)))
+  (goto-char (region-end-or-point))
+  (funcall (object-find (keym--object)) 1))
 
 (cmd-to-run-for-all 'keym-next-after)
 
-(defun keym-previous ()
-  "Move to the previous occurrence of the current object."
-  (interactive)
-  (when keym-last-object
-    (goto-char (region-beginning-or-point))
-    (funcall (object-find keym-last-object) -1)))
+(defun keym-previous (&optional arg)
+  "Move backwards to the ARGth occurrence of the current object.
+Starts from the beginning of the selection."
+  (interactive "p")
+  (keym-next-in (if arg (- arg) -1)))
 
 (cmd-to-run-for-all 'keym-previous)
 
 (defun keym-expand ()
   "Expand the current selection."
   (interactive)
-  (when keym-last-object
-    (let ((to (region-end-or-point)))
-      (goto-char (region-beginning-or-point))
-      (funcall (object-find-start keym-last-object) -1)
-      (set-mark (point))
-      (goto-char to)
-      (funcall (object-find-end keym-last-object) 1))))
+  (let ((to (region-end-or-point)))
+    (goto-char (region-beginning-or-point))
+    (funcall (object-find-start (keym--object)) -1)
+    (set-mark (point))
+    (goto-char to)
+    (funcall (object-find-end (keym--object)) 1)))
 
 (cmd-to-run-for-all 'keym-expand)
 
 (defun keym-expand-backward ()
   "Expand the selection to the previous start of the current object."
   (interactive)
-  (when keym-last-object
-    (let ((to (region-end-or-point)))
-      (goto-char (region-beginning-or-point))
-      (set-mark to)
-      (funcall (object-find-start keym-last-object) -1))))
+  (let ((to (region-end-or-point)))
+    (goto-char (region-beginning-or-point))
+    (set-mark to)
+    (funcall (object-find-start (keym--object)) -1)))
 
 (cmd-to-run-for-all 'keym-expand-backward)
 
 (defun keym-expand-forward ()
   "Expand the selection to the next end of the current object."
   (interactive)
-  (when keym-last-object
-    (let ((from (region-beginning-or-point)))
-      (goto-char (region-end-or-point))
-      (set-mark from)
-      (funcall (object-find-end keym-last-object) 1))))
+  (let ((from (region-beginning-or-point)))
+    (goto-char (region-end-or-point))
+    (set-mark from)
+    (funcall (object-find-end (keym--object)) 1)))
 
 (cmd-to-run-for-all 'keym-expand-forward)
 
@@ -233,6 +231,17 @@ object struct."
 
 (defvar keym-command-mode-map (make-sparse-keymap)
   "Keymap used for command mode.")
+
+(define-key keym-command-mode-map (kbd "1") 'digit-argument)
+(define-key keym-command-mode-map (kbd "2") 'digit-argument)
+(define-key keym-command-mode-map (kbd "3") 'digit-argument)
+(define-key keym-command-mode-map (kbd "4") 'digit-argument)
+(define-key keym-command-mode-map (kbd "5") 'digit-argument)
+(define-key keym-command-mode-map (kbd "6") 'digit-argument)
+(define-key keym-command-mode-map (kbd "7") 'digit-argument)
+(define-key keym-command-mode-map (kbd "8") 'digit-argument)
+(define-key keym-command-mode-map (kbd "9") 'digit-argument)
+(define-key keym-command-mode-map (kbd "-") 'negative-argument)
 
 ;; Left-hand side
 
@@ -270,7 +279,7 @@ object struct."
   "Select all of the current object in the current selection."
   (interactive)
   (let ((to (region-end-or-point))
-	(find (object-find keym-last-object)))
+	(find (object-find (keym--object))))
     (goto-char (region-beginning-or-point))
     (while (funcall find 1 to)
       (mc/create-fake-cursor-at-point))
@@ -280,14 +289,12 @@ object struct."
 
 (defun keym-command-to-insert ()
   "Switch from insert state to command state."
-  (setq keym-state 'insert)
   (keym-command-mode -1)
   (keym-insert-mode 1))
 
 (defun keym-insert-to-command ()
   "Switch from insert state to command state."
   (interactive)
-  (setq keym-state 'command)
   (keym-insert-mode -1)
   (keym-command-mode 1))
 
@@ -297,10 +304,8 @@ object struct."
   "Switch from insert state to command state.
 Place the cursor at the left side of the region."
   (interactive)
-  (let ((n (region-beginning-or-point)))
-    (goto-char n)
-    (set-mark n)
-    (keym-command-to-insert)))
+  (goto-char (region-beginning-or-point))
+  (keym-command-to-insert))
 
 (cmd-to-run-for-all 'keym-insert-left)
 
@@ -308,10 +313,8 @@ Place the cursor at the left side of the region."
   "Switch from insert state to command state.
 Place the cursor at the right side of the region."
   (interactive)
-  (let ((n (region-end-or-point)))
-    (goto-char n)
-    (set-mark n)
-    (keym-command-to-insert)))
+  (goto-char (region-end-or-point))
+  (keym-command-to-insert))
 
 (cmd-to-run-for-all 'keym-insert-right)
 
@@ -338,7 +341,8 @@ Place the cursor at the right side of the region."
   :keymap
   `((,(kbd "C-n") . keym-insert-to-command)
     ([escape] . keym-insert-to-command))
-  (setq cursor-type 'bar))
+  (setq cursor-type 'bar)
+  (deactivate-mark))
 
 (define-globalized-minor-mode keym-mode keym-command-mode
   (lambda ()
