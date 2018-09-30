@@ -178,6 +178,32 @@ object struct."
       (goto-char to)
       (funcall (object-find-end keym-last-object) 1))))
 
+(cmd-to-run-for-all 'keym-expand)
+
+(defun keym-expand-backward ()
+  "Expand the selection to the previous start of the current object."
+  (interactive)
+  (when keym-last-object
+    (let ((to (region-end-or-point)))
+      (goto-char (region-beginning-or-point))
+      (set-mark to)
+      (funcall (object-find-start keym-last-object) -1))))
+
+(cmd-to-run-for-all 'keym-expand-backward)
+
+(defun keym-expand-forward ()
+  "Expand the selection to the next end of the current object."
+  (interactive)
+  (when keym-last-object
+    (let ((from (region-beginning-or-point)))
+      (goto-char (region-end-or-point))
+      (set-mark from)
+      (funcall (object-find-end keym-last-object) 1))))
+
+(cmd-to-run-for-all 'keym-expand-forward)
+
+;; This command is probably not very useful as it is very close in behavior to
+;; `keym-expand-forward'.
 (defun keym-include-next ()
   "Grow the selection to include the next occurrence of the curent object."
   (interactive)
@@ -229,14 +255,13 @@ object struct."
 (define-key keym-command-mode-map "u" 'keym-insert-right)
 (define-key keym-command-mode-map ";" 'comment-or-uncomment-region)
 
-(define-key keym-command-mode-map "n" 'keym-next-in)
-(define-key keym-command-mode-map "N" 'keym-include-next)
-(define-key keym-command-mode-map (kbd "C-n") 'keym-next-after)
-(define-key keym-command-mode-map (kbd "M-n") 'keym-add-next)
-(define-key keym-command-mode-map "e" 'keym-previous)
-(define-key keym-command-mode-map (kbd "C-e") 'keym-previous)
-(define-key keym-command-mode-map "E" 'keym-previous)
-(define-key keym-command-mode-map "m" 'keym-expand)
+(define-key keym-command-mode-map "e" 'keym-next-in)
+(define-key keym-command-mode-map "E" 'keym-expand-forward)
+(define-key keym-command-mode-map (kbd "C-e") 'keym-next-after)
+(define-key keym-command-mode-map (kbd "M-e") 'keym-add-next)
+(define-key keym-command-mode-map "n" 'keym-previous)
+(define-key keym-command-mode-map (kbd "C-n") 'keym-previous)
+(define-key keym-command-mode-map "N" 'keym-expand-backward)
 (define-key keym-command-mode-map "k" 'keym-all-in)
 
 (define-key keym-command-mode-map (kbd "C->") 'mc/mark-next-like-this)
@@ -304,7 +329,6 @@ Place the cursor at the right side of the region."
   "Keym command mode"
   :lighter " cmd"
   :keymap keym-command-mode-map
-  :global t
   (delete-selection-mode 1)
   (setq cursor-type 'box))
 
@@ -312,8 +336,8 @@ Place the cursor at the right side of the region."
   "Keym insert mode"
   :lighter " ins"
   :keymap
-  '(((kbd "q") . keym-insert-to-command)
-    (([escape]) . keym-insert-to-command))
+  `((,(kbd "C-n") . keym-insert-to-command)
+    ([escape] . keym-insert-to-command))
   (setq cursor-type 'bar))
 
 (define-globalized-minor-mode keym-mode keym-command-mode

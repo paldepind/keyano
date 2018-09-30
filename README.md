@@ -14,11 +14,11 @@ Left-hand side.
 
 Right-hand side.
 
-|                       | Index finder               |                             |                          |                          |
-| ------------          | ------------------------   | ------------------------    | ------------------------ | ------------------------ |
-| <kbd>j</kbd>          | <kbd>l</kbd> `insert-left` | <kbd>u</kbd> `insert-right` | <kbd>y</kbd>             | <kbd>;</kbd> `comment`   |
-| <kbd>h</kbd>          | <kbd>n</kbd> `next-in`     | <kbd>e</kbd> `previous`     | <kbd>i</kbd>             | <kbd>o</kbd>             |
-| <kbd>k</kbd> `all-in` | <kbd>m</kbd> `expand`      | <kbd>,</kbd>                | <kbd>.</kbd>             | <kbd>/</kbd> `prev-char` |
+|                       | Index finder                   |                               |              |                          |
+| ------------          | ------------------------       | ------------------------      | -            | ------------------------ |
+| <kbd>j</kbd>          | <kbd>l</kbd> `insert-left`     | <kbd>u</kbd> `insert-right`   | <kbd>y</kbd> | <kbd>;</kbd> `comment`   |
+| <kbd>h</kbd>          | <kbd>n</kbd> `previous`        | <kbd>e</kbd> `next-in`        | <kbd>i</kbd> | <kbd>o</kbd>             |
+| <kbd>k</kbd> `all-in` | <kbd>m</kbd> `expand-backward` | <kbd>,</kbd> `expand-forward` | <kbd>.</kbd> | <kbd>/</kbd> `prev-char` |
 
 ### Shift
 
@@ -50,11 +50,11 @@ Left-hand side.
 
 Right-hand side.
 
-|              | Index finder              |                          |                          |                          |
-| ------------ | ------------------------  | ------------------------ | ------------------------ | ------------------------ |
-| <kbd>j</kbd> | <kbd>l</kbd>              | <kbd>u</kbd>             | <kbd>y</kbd>             | <kbd>;</kbd>             |
-| <kbd>h</kbd> | <kbd>n</kbd> `next-after` | <kbd>e</kbd>             | <kbd>i</kbd>             | <kbd>o</kbd>             |
-| <kbd>k</kbd> | <kbd>m</kbd>              | <kbd>,</kbd>             | <kbd>.</kbd>             | <kbd>/</kbd>             |
+|              | Index finder             |                           |                          |                          |
+| ------------ | ------------------------ | ------------------------  | ------------------------ | ------------------------ |
+| <kbd>j</kbd> | <kbd>l</kbd>             | <kbd>u</kbd>              | <kbd>y</kbd>             | <kbd>;</kbd>             |
+| <kbd>h</kbd> | <kbd>n</kbd>             | <kbd>e</kbd> `next-after` | <kbd>i</kbd>             | <kbd>o</kbd>             |
+| <kbd>k</kbd> | <kbd>m</kbd>             | <kbd>,</kbd>              | <kbd>.</kbd>             | <kbd>/</kbd>             |
 
 ### Meta
 
@@ -71,5 +71,5 @@ Right-hand side.
 |              | Index finder             |                          |                          |                          |
 | ------------ | ------------------------ | ------------------------ | ------------------------ | ------------------------ |
 | <kbd>j</kbd> | <kbd>l</kbd>             | <kbd>u</kbd>             | <kbd>y</kbd>             | <kbd>;</kbd>             |
-| <kbd>h</kbd> | <kbd>n</kbd> `add-next`  | <kbd>e</kbd>             | <kbd>i</kbd>             | <kbd>o</kbd>             |
+| <kbd>h</kbd> | <kbd>n</kbd>             | <kbd>e</kbd> `add-next`  | <kbd>i</kbd>             | <kbd>o</kbd>             |
 | <kbd>k</kbd> | <kbd>m</kbd>             | <kbd>,</kbd>             | <kbd>.</kbd>             | <kbd>/</kbd>             |
