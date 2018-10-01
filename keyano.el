@@ -58,7 +58,7 @@
   (goto-char to))
 
 (cl-defstruct object
-  find find-start find-end) ; matches)
+  find find-start find-end kill-range) ; matches)
 
 (defvar keyano--current-object nil)
 
@@ -66,17 +66,18 @@
   "Get the current object."
   (if keyano--current-object keyano--current-object word-object))
 
-(defun create-regexp-object (full start end)
+(defun create-regexp-object (full subexp start end)
   "Create an object based on regular expressions.
-FULL is a regexp that matches the entire object, START must match
-the start of the object, and END matches the end.  Returns an
-object struct."
+FULL is a regexp that matches the entire object or more.  SUBEXP
+denotes which subexpression to use.  START must match the start
+of the object, and END matches the end.  Returns an object
+struct."
   (make-object
    :find
    (lambda (n &optional limit)
      (when (search-forward-regexp full limit t n)
-       (set-mark (match-beginning 0))
-       (goto-char (match-end 0))))
+       (set-mark (match-beginning subexp))
+       (goto-char (match-end subexp))))
    :find-start
    (lambda (n &optional limit)
      (when (search-forward-regexp start limit t n)
@@ -87,16 +88,25 @@ object struct."
        (goto-char (match-end 0))))))
 
 (defvar char-object
-  (create-regexp-object "." "." "."))
+  (create-regexp-object "." 0 "." "."))
 
 (defvar word-object
-  (create-regexp-object "\\<\\w*\\>" "\\<" "\\w\\>"))
+  (create-regexp-object "\\<\\w*\\>" 0 "\\<" "\\w\\>"))
 
 (defvar number-object
-  (create-regexp-object "\\<[0-9]+\\(\\.[0-9]+\\)?\\>" "\\<[0-9]" "[0-9]\\>"))
+  (create-regexp-object "\\<[0-9]+\\(\\.[0-9]+\\)?\\>" 0 "\\<[0-9]" "[0-9]\\>"))
 
 (defvar line-object
-  (create-regexp-object "^.*$" "^." ".$"))
+  (let ((object (create-regexp-object "^\\s-*\\(.*\\)$" 1 "^." ".$")))
+    (setf (object-kill-range object)
+	  (lambda ()
+	    (seq-let (from to) (keyano--selection)
+	      (goto-char from)
+	      (beginning-of-line)
+	      (set-mark (point))
+	      (goto-char to)
+	      (forward-char))))
+    object))
 
 (defvar parentheses-object
   (make-object
@@ -277,7 +287,7 @@ Starts from the beginning of the selection."
 (define-key keyano-command-mode-map "t" 'keyano-change)
 
 (define-key keyano-command-mode-map "z" 'undo)
-(define-key keyano-command-mode-map "x" 'kill-region)
+(define-key keyano-command-mode-map "x" 'keyano-kill)
 (define-key keyano-command-mode-map "c" 'kill-ring-save)
 (define-key keyano-command-mode-map "v" 'yank)
 
@@ -341,7 +351,14 @@ Place the cursor at the right side of the region."
 
 (cmd-to-run-for-all 'keyano-insert-right)
 
-(cmd-to-run-for-all 'kill-region)
+(defun keyano-kill ()
+  "Kill the current region."
+  (interactive)
+  (let ((r (object-kill-range (keyano--object))))
+    (when r (funcall r))
+    (kill-region 0 0 t)))
+
+(cmd-to-run-for-all 'keyano-kill)
 
 (defun keyano-change ()
   "Kill the current selections and enters insert state."
