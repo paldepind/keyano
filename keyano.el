@@ -58,7 +58,7 @@
   (goto-char to))
 
 (cl-defstruct object
-  find find-start find-end kill-range) ; matches)
+  find find-start find-end expand kill-range) ; matches)
 
 (defvar keyano--current-object nil)
 
@@ -85,7 +85,12 @@ struct."
    :find-end
    (lambda (n &optional limit)
      (when (search-forward-regexp end limit t n)
-       (goto-char (match-end 0))))))
+       (goto-char (match-end 0))))
+   :expand
+   (lambda ()
+     (when (search-forward-regexp end nil t)
+       (set-mark (point))
+       (search-backward-regexp start nil t)))))
 
 (defvar char-object
   (create-regexp-object "." 0 "." "."))
@@ -203,12 +208,13 @@ Starts from the beginning of the selection."
 (defun keyano-expand ()
   "Expand the current selection."
   (interactive)
-  (let ((to (region-end-or-point)))
-    (goto-char (region-beginning-or-point))
-    (funcall (object-find-start (keyano--object)) -1)
-    (set-mark (point))
-    (goto-char to)
-    (funcall (object-find-end (keyano--object)) 1)))
+  (funcall (object-expand (keyano--object))))
+  ;; (let ((to (region-end-or-point)))
+    ;; (goto-char (region-beginning-or-point))
+    ;; (funcall (object-find-start (keyano--object)) -1)
+    ;; (set-mark (point))
+    ;; (goto-char to)
+    ;; (funcall (object-find-end (keyano--object)) 1)))
 
 (cmd-to-run-for-all 'keyano-expand)
 
@@ -261,6 +267,30 @@ Starts from the beginning of the selection."
 
 (cmd-to-run-once 'keyano-add-previous)
 
+(defun keyano-above (from to)
+  "Move the current selection below itself NTH lines down.
+Operates on FROM to TO."
+  (interactive "r")
+  (let ((n (+ from (/ (- to from) 2))))
+    (set-mark nil)
+    (goto-char n)
+    (previous-line)
+    (keyano-expand)))
+
+(cmd-to-run-for-all 'keyano-above)
+
+(defun keyano-below (from to)
+  "Move the current selection below itself NTH lines down.
+Operates on FROM to TO."
+  (interactive "r")
+  (let ((n (+ from (/ (- to from) 2))))
+    (set-mark nil)
+    (goto-char n)
+    (next-line)
+    (keyano-expand)))
+
+(cmd-to-run-for-all 'keyano-below)
+
 (defvar keyano-command-mode-map (make-sparse-keymap)
   "Keymap used for command mode.")
 
@@ -294,17 +324,21 @@ Starts from the beginning of the selection."
 ;; Right-hand side
 
 (define-key keyano-command-mode-map "l" 'keyano-insert-left)
-(define-key keyano-command-mode-map "u" 'keyano-insert-right)
+(define-key keyano-command-mode-map "u" 'keyano-above)
+(define-key keyano-command-mode-map "y" 'keyano-insert-right)
 (define-key keyano-command-mode-map ";" 'comment-or-uncomment-region)
 
-(define-key keyano-command-mode-map "e" 'keyano-next-in)
-(define-key keyano-command-mode-map "E" 'keyano-expand-forward)
-(define-key keyano-command-mode-map (kbd "C-e") 'keyano-next-after)
-(define-key keyano-command-mode-map (kbd "M-e") 'keyano-add-next)
 (define-key keyano-command-mode-map "n" 'keyano-previous)
 (define-key keyano-command-mode-map (kbd "C-n") 'keyano-previous)
 (define-key keyano-command-mode-map "N" 'keyano-expand-backward)
+(define-key keyano-command-mode-map "e" 'keyano-below)
+(define-key keyano-command-mode-map "i" 'keyano-next-in)
+(define-key keyano-command-mode-map "I" 'keyano-expand-forward)
+(define-key keyano-command-mode-map (kbd "C-i") 'keyano-next-after)
+(define-key keyano-command-mode-map (kbd "M-i") 'keyano-add-next)
+
 (define-key keyano-command-mode-map "k" 'keyano-all-in)
+(define-key keyano-command-mode-map "," 'keyano-expand)
 
 (define-key keyano-command-mode-map (kbd "C->") 'mc/mark-next-like-this)
 
