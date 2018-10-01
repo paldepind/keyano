@@ -6,11 +6,11 @@
 
 Left-hand side.
 
-|                     |                       |                               | Index finger               |              |
-| ------------------- | -------------------   | ----------------------------- | ------------------------   | ------------ |
-| <kbd>q</kbd>        | <kbd>w</kbd> `number` | <kbd>f</kbd>                  | <kbd>p</kbd> `parentheses` | <kbd>g</kbd> |
-| <kbd>a</kbd> `char` | <kbd>r</kbd> `word`   | <kbd>s</kbd> `line`           | <kbd>t</kbd> `change`      | <kbd>d</kbd> |
-| <kbd>z</kbd> `undo` | <kbd>x</kbd> `kill`   | <kbd>c</kbd> `kill-ring-save` | <kbd>v</kbd> `yank`        | <kbd>b</kbd> |
+|                     |                       |                               | Index finger               |                               |
+| ------------------- | -------------------   | ----------------------------- | ------------------------   | ------------                  |
+| <kbd>q</kbd>        | <kbd>w</kbd> `number` | <kbd>f</kbd>                  | <kbd>p</kbd> `parentheses` | <kbd>g</kbd> `transpose-next` |
+| <kbd>a</kbd> `char` | <kbd>r</kbd> `word`   | <kbd>s</kbd> `line`           | <kbd>t</kbd> `change`      | <kbd>d</kbd>                  |
+| <kbd>z</kbd> `undo` | <kbd>x</kbd> `kill`   | <kbd>c</kbd> `kill-ring-save` | <kbd>v</kbd> `yank`        | <kbd>b</kbd>                  |
 
 Right-hand side.
 

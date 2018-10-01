@@ -27,6 +27,7 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'seq)
 (require 'multiple-cursors)
 
 (defun cmd-to-run-once (command)
@@ -46,6 +47,15 @@
 (defun region-end-or-point ()
   "Get the beginning of the region or point if region is inactive."
   (if mark-active (region-end) (point)))
+
+(defun keyano--selection ()
+  "Get the beginning and end of the current selection."
+  (if mark-active (list (region-beginning) (region-end)) (list (point) (point))))
+
+(defun keyano--set-selection (from to)
+  "Set the current selection FROM TO."
+  (set-mark from)
+  (goto-char to))
 
 (cl-defstruct object
   find find-start find-end) ; matches)
@@ -141,9 +151,8 @@ object struct."
 Starts from the beginning of the selection."
   (interactive "p")
   (when (not arg) (setq arg 1))
-  (let ((orig-from (region-beginning-or-point))
-	(orig-to (region-end-or-point)))
-    (goto-char (region-beginning-or-point))
+  (seq-let (orig-from orig-to) (keyano--selection)
+    (goto-char orig-from)
     (funcall (object-find (keyano--object)) arg)
     (when (and (= orig-from (region-beginning-or-point))
 	       (= orig-to (region-end-or-point)))
@@ -152,13 +161,26 @@ Starts from the beginning of the selection."
 
 (cmd-to-run-for-all 'keyano-next-in)
 
-(defun keyano-next-after ()
-  "Move to the next occurrence of the current object after the selection."
-  (interactive)
+(defun keyano-next-after (&optional n)
+  "Move to the Nth occurrence of the current object after the selection."
+  (interactive "p")
   (goto-char (region-end-or-point))
-  (funcall (object-find (keyano--object)) 1))
+  (funcall (object-find (keyano--object)) (if n n 1)))
 
 (cmd-to-run-for-all 'keyano-next-after)
+
+(defun keyano-transpose-next (&optional n)
+  "Transpose the current selection with the next object.
+Transposes with Nth occurrence of the current object after the selection."
+  (interactive "p")
+  (seq-let (a b) (keyano--selection)
+    (keyano-next-after n)
+    (seq-let (c d) (keyano--selection)
+      (transpose-regions a b c d)
+      (setq deactivate-mark nil)
+      (set-mark (- d (- b a))))))
+
+(cmd-to-run-for-all 'keyano-transpose-next)
 
 (defun keyano-previous (&optional arg)
   "Move backwards to the ARGth occurrence of the current object.
@@ -230,7 +252,7 @@ Starts from the beginning of the selection."
 (cmd-to-run-once 'keyano-add-previous)
 
 (defvar keyano-command-mode-map (make-sparse-keymap)
-  "Keyanoap used for command mode.")
+  "Keymap used for command mode.")
 
 (define-key keyano-command-mode-map (kbd "1") 'digit-argument)
 (define-key keyano-command-mode-map (kbd "2") 'digit-argument)
@@ -247,6 +269,7 @@ Starts from the beginning of the selection."
 
 (define-key keyano-command-mode-map "p" 'keyano-parentheses)
 (define-key keyano-command-mode-map "w" 'keyano-number)
+(define-key keyano-command-mode-map "g" 'keyano-transpose-next)
 
 (define-key keyano-command-mode-map "a" 'keyano-char)
 (define-key keyano-command-mode-map "r" 'keyano-word)
@@ -331,14 +354,14 @@ Place the cursor at the right side of the region."
 (define-minor-mode keyano-command-mode
   "Keyano command mode"
   :lighter " cmd"
-  :keyanoap keyano-command-mode-map
+  :keymap keyano-command-mode-map
   (delete-selection-mode 1)
   (setq cursor-type 'box))
 
 (define-minor-mode keyano-insert-mode
   "Keyano insert mode"
   :lighter " ins"
-  :keyanoap
+  :keymap
   `((,(kbd "C-n") . keyano-insert-to-command)
     ([escape] . keyano-insert-to-command))
   (setq cursor-type 'bar)
