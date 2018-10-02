@@ -249,10 +249,10 @@ Starts from the beginning of the selection."
   (interactive "p")
   (when (not arg) (setq arg 1))
   (seq-let (orig-from orig-to) (keyano--selection)
-    ;; Make sure that point is before point so the search starts inside the
-    ;; selection. But, do not remove the point since `current-selection-object'
+    ;; Make sure that point is before mark so the search starts inside the
+    ;; selection. But, do not remove the mark since `current-selection-object'
     ;; uses it.
-    (when (< (mark) (point)) (exchange-point-and-mark))
+    (keyano--set-selection orig-from orig-to)
     (when (and (funcall (object-find (keyano--object)) arg)
                (= orig-from (region-beginning-or-point))
 	       (= orig-to (region-end-or-point)))
@@ -402,7 +402,7 @@ Starts from the beginning of the selection."
 (define-key keyano-command-mode-map "s" 'keyano-line)
 (define-key keyano-command-mode-map "t" 'keyano-change)
 
-(define-key keyano-command-mode-map "z" 'undo)
+(define-key keyano-command-mode-map "z" 'keyano-undo)
 (define-key keyano-command-mode-map "x" 'keyano-kill)
 (define-key keyano-command-mode-map "c" 'kill-ring-save)
 (define-key keyano-command-mode-map "v" 'yank)
@@ -486,7 +486,14 @@ Place the cursor at the right side of the region."
   (kill-region 0 0 t)
   (keyano-command-to-insert))
 
-(cmd-to-run-for-all 'keyano-change)
+(defun keyano-undo (&optional arg)
+  "Undo ARG previous changes."
+  (interactive "p")
+  (deactivate-mark)
+  (undo arg)
+  (activate-mark))
+
+(cmd-to-run-for-all 'keyano-undo)
 
 (define-minor-mode keyano-command-mode
   "Keyano command mode"
