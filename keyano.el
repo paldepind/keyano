@@ -66,6 +66,29 @@
   "Get the current object."
   (if keyano--current-object keyano--current-object word-object))
 
+(defun keyano--create-constant-object (str)
+  "Create an object based on STR."
+  (make-object
+   :find
+   (lambda (n &optional limit)
+     (when (search-forward str limit t n)
+       (set-mark (match-beginning 0))
+       (goto-char (match-end 0))))
+   :find-start
+   (lambda (n &optional limit)
+     (when (search-forward str limit t n)
+       (goto-char (match-beginning 0))))
+   :find-end
+   (lambda (n &optional limit)
+     (when (search-forward str limit t n)
+       (goto-char (match-end 0))))
+   :expand
+   (lambda ()
+     (backward-char (length str))
+     (when (search-forward-regexp str (+ (point) (* 2 (length str))) t)
+       (set-mark (match-beginning 0))
+       (goto-char (match-end 0))))))
+
 (defun create-regexp-object (full subexp start end)
   "Create an object based on regular expressions.
 FULL is a regexp that matches the entire object or more.  SUBEXP
@@ -102,7 +125,7 @@ struct."
   (create-regexp-object "\\<[0-9]+\\(\\.[0-9]+\\)?\\>" 0 "\\<[0-9]" "[0-9]\\>"))
 
 (defvar line-object
-  (let ((object (create-regexp-object "^\\s-*\\(.*\\)$" 1 "^." ".$")))
+  (let ((object (create-regexp-object "^[\t ]*\\(.*\\)$" 1 "^." ".$")))
     (setf (object-kill-range object)
 	  (lambda ()
 	    (seq-let (from to) (keyano--selection)
@@ -120,7 +143,8 @@ struct."
      (when (search-forward "(" limit t n)
        (goto-char (match-beginning 0))
        (set-mark (point))
-       (forward-sexp)))))
+       (forward-sexp)
+       t))))
 
 (defun keyano--object-command (object)
   "Execute an object command with the given OBJECT."
@@ -161,20 +185,20 @@ struct."
 
 (cmd-to-run-for-all 'keyano-parentheses)
 
-(defun keyano-next-in (&optional arg)
+(defun keyano-next (&optional arg)
   "Move to the ARGth occurrence of the current object.
 Starts from the beginning of the selection."
   (interactive "p")
   (when (not arg) (setq arg 1))
   (seq-let (orig-from orig-to) (keyano--selection)
     (goto-char orig-from)
-    (funcall (object-find (keyano--object)) arg)
-    (when (and (= orig-from (region-beginning-or-point))
+    (when (and (funcall (object-find (keyano--object)) arg)
+               (= orig-from (region-beginning-or-point))
 	       (= orig-to (region-end-or-point)))
-      (goto-char (+ (region-beginning-or-point) arg))
+      (goto-char (+ (region-beginning-or-point) (if (< arg 0) -1 1)))
       (funcall (object-find (keyano--object)) arg))))
 
-(cmd-to-run-for-all 'keyano-next-in)
+(cmd-to-run-for-all 'keyano-next)
 
 (defun keyano-next-after (&optional n)
   "Move to the Nth occurrence of the current object after the selection."
@@ -201,7 +225,7 @@ Transposes with Nth occurrence of the current object after the selection."
   "Move backwards to the ARGth occurrence of the current object.
 Starts from the beginning of the selection."
   (interactive "p")
-  (keyano-next-in (if arg (- arg) -1)))
+  (keyano-next (if arg (- arg) -1)))
 
 (cmd-to-run-for-all 'keyano-previous)
 
@@ -209,12 +233,6 @@ Starts from the beginning of the selection."
   "Expand the current selection."
   (interactive)
   (funcall (object-expand (keyano--object))))
-  ;; (let ((to (region-end-or-point)))
-    ;; (goto-char (region-beginning-or-point))
-    ;; (funcall (object-find-start (keyano--object)) -1)
-    ;; (set-mark (point))
-    ;; (goto-char to)
-    ;; (funcall (object-find-end (keyano--object)) 1)))
 
 (cmd-to-run-for-all 'keyano-expand)
 
@@ -291,6 +309,11 @@ Operates on FROM to TO."
 
 (cmd-to-run-for-all 'keyano-below)
 
+(defun keyano-find (str)
+  "Find STR."
+  (interactive "sSearch: ")
+  (keyano--object-command (keyano--create-constant-object str)))
+
 (defvar keyano-command-mode-map (make-sparse-keymap)
   "Keymap used for command mode.")
 
@@ -332,13 +355,14 @@ Operates on FROM to TO."
 (define-key keyano-command-mode-map (kbd "C-n") 'keyano-previous)
 (define-key keyano-command-mode-map "N" 'keyano-expand-backward)
 (define-key keyano-command-mode-map "e" 'keyano-below)
-(define-key keyano-command-mode-map "i" 'keyano-next-in)
+(define-key keyano-command-mode-map "i" 'keyano-next)
 (define-key keyano-command-mode-map "I" 'keyano-expand-forward)
 (define-key keyano-command-mode-map (kbd "C-i") 'keyano-next-after)
 (define-key keyano-command-mode-map (kbd "M-i") 'keyano-add-next)
 
 (define-key keyano-command-mode-map "k" 'keyano-all-in)
 (define-key keyano-command-mode-map "," 'keyano-expand)
+(define-key keyano-command-mode-map "/" 'keyano-find)
 
 (define-key keyano-command-mode-map (kbd "C->") 'mc/mark-next-like-this)
 
