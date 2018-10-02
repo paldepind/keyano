@@ -61,18 +61,20 @@
 
 (defvar keyano--secondary-selection nil)
 
+(push 'keyano--secondary-selection mc/cursor-specific-vars)
+(push 'keyano--current-object mc/cursor-specific-vars)
+
 (defun keyano--set-secondary-selection (from to)
   "Set secondary selction starting at FROM and up to TO."
   (let ((overlay (make-overlay from to)))
-    (overlay-put overlay 'keyano-overlay t)
-    ;; (overlay-put overlay 'hi-lock-overlay-regexp regexp)
     (overlay-put overlay 'face 'pink)
-    (setq keyano--secondary-selection (list from to))))
+    (setq keyano--secondary-selection (list from to overlay))))
 
 (defun keyano--clear-secondary-selection ()
   "Clear the secondary selection."
-  (remove-overlays nil nil 'keyano-overlay t)
-  (setq keyano--secondary-selection nil))
+  (when keyano--secondary-selection
+    (delete-overlay (nth 2 keyano--secondary-selection))
+    (setq keyano--secondary-selection nil)))
 
 (defun keyano--selection (&optional secondary)
   "Get the beginning and end of the current selection.
@@ -192,9 +194,11 @@ struct."
 (defun keyano--object-command (object)
   "Execute an object command with the given OBJECT."
   (seq-let (from to) (keyano--selection)
-    (setq keyano--current-object object)
-    (keyano-next)
-    (keyano--set-secondary-selection from to)))
+    (let ((old-object (keyano--object)))
+      (setq keyano--current-object object)
+      (keyano-next)
+      (if (not (eq object old-object))
+	  (keyano--set-secondary-selection from to)))))
 
 (defun keyano-char ()
   "Command representing a char object."
@@ -357,8 +361,10 @@ Starts from the beginning of the selection."
   (seq-let (from to) (keyano--selection)
     (let ((n (+ from (/ (- to from) 2))))
       (keyano--set-selection nil n)
-      (forward-line (or nth 1))
-      (keyano-expand))))
+      (let ((c (current-column)))
+	(forward-line (or nth 1))
+	(forward-char c)
+	(keyano-expand)))))
 
 (cmd-to-run-for-all 'keyano-below)
 
@@ -493,7 +499,7 @@ Place the cursor at the right side of the region."
   "Keyano insert mode"
   :lighter " ins"
   :keymap
-  `((,(kbd "C-n") . keyano-insert-to-command)
+  `((,(kbd "C-q") . keyano-insert-to-command)
     ([escape] . keyano-insert-to-command))
   (setq cursor-type 'bar)
   (deactivate-mark))
