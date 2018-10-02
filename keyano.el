@@ -57,8 +57,11 @@
   (set-mark from)
   (goto-char to))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Selectors
+
 (cl-defstruct object
-  find find-start find-end expand kill-range) ; matches)
+  find find-start find-end expand kill-range matches)
 
 (defvar keyano--current-object nil)
 
@@ -146,6 +149,18 @@ struct."
        (forward-sexp)
        t))))
 
+(defvar current-selection-object
+  (make-object
+   :find
+   (lambda (n &optional limit)
+     (let ((s (buffer-substring-no-properties (mark) (point))))
+       (forward-char n) ;; Move forward so we find new occurrence
+       (when (search-forward s limit t n)
+     	 (set-mark (match-beginning 0))
+     	 (goto-char (match-end 0))
+	 t)))
+   :matches (lambda () t)))
+
 (defun keyano--object-command (object)
   "Execute an object command with the given OBJECT."
   ;; (goto-char (region-beginning-or-point))
@@ -185,13 +200,26 @@ struct."
 
 (cmd-to-run-for-all 'keyano-parentheses)
 
+(defun keyano-current-selection ()
+  "Command representing an objet equal to the current selection."
+  (interactive)
+  (keyano--object-command current-selection-object))
+
+(cmd-to-run-for-all 'keyano-current-selection)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Selectors
+
 (defun keyano-next (&optional arg)
   "Move to the ARGth occurrence of the current object.
 Starts from the beginning of the selection."
   (interactive "p")
   (when (not arg) (setq arg 1))
   (seq-let (orig-from orig-to) (keyano--selection)
-    (goto-char orig-from)
+    ;; Make sure that point is before point so the search starts inside the
+    ;; selection. But, do not remove the point since `current-selection-object'
+    ;; uses it.
+    (when (< (mark) (point)) (exchange-point-and-mark))
     (when (and (funcall (object-find (keyano--object)) arg)
                (= orig-from (region-beginning-or-point))
 	       (= orig-to (region-end-or-point)))
@@ -317,6 +345,8 @@ Operates on FROM to TO."
 (defvar keyano-command-mode-map (make-sparse-keymap)
   "Keymap used for command mode.")
 
+;; Top row
+
 (define-key keyano-command-mode-map (kbd "1") 'digit-argument)
 (define-key keyano-command-mode-map (kbd "2") 'digit-argument)
 (define-key keyano-command-mode-map (kbd "3") 'digit-argument)
@@ -327,6 +357,8 @@ Operates on FROM to TO."
 (define-key keyano-command-mode-map (kbd "8") 'digit-argument)
 (define-key keyano-command-mode-map (kbd "9") 'digit-argument)
 (define-key keyano-command-mode-map (kbd "-") 'negative-argument)
+
+(define-key keyano-command-mode-map (kbd "*") 'keyano-current-selection)
 
 ;; Left-hand side
 
