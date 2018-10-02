@@ -48,14 +48,42 @@
   "Get the beginning of the region or point if region is inactive."
   (if mark-active (region-end) (point)))
 
-(defun keyano--selection ()
-  "Get the beginning and end of the current selection."
-  (if mark-active (list (region-beginning) (region-end)) (list (point) (point))))
+(defface pink
+  '((((background dark)) (:background "pink" :foreground "black"))
+    (t (:background "pink")))
+  "Face for hi-lock mode."
+  :group 'hi-lock-faces)
 
 (defun keyano--set-selection (from to)
   "Set the current selection FROM TO."
   (set-mark from)
   (goto-char to))
+
+(defvar keyano--secondary-selection nil)
+
+(defun keyano--set-secondary-selection (from to)
+  "Set secondary selction starting at FROM and up to TO."
+  (let ((overlay (make-overlay from to)))
+    (overlay-put overlay 'keyano-overlay t)
+    ;; (overlay-put overlay 'hi-lock-overlay-regexp regexp)
+    (overlay-put overlay 'face 'pink)
+    (setq keyano--secondary-selection (list from to))))
+
+(defun keyano--clear-secondary-selection ()
+  "Clear the secondary selection."
+  (remove-overlays nil nil 'keyano-overlay t)
+  (setq keyano--secondary-selection nil))
+
+(defun keyano--selection (&optional secondary)
+  "Get the beginning and end of the current selection.
+If SECONDARY it non-nil the secondary selection is returned if it exists."
+  (let ((r (if (and secondary keyano--secondary-selection)
+	       keyano--secondary-selection
+	     (if mark-active
+		 (list (region-beginning) (region-end))
+	       (list (point) (point))))))
+    (keyano--clear-secondary-selection)
+    r))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Selectors
@@ -163,9 +191,10 @@ struct."
 
 (defun keyano--object-command (object)
   "Execute an object command with the given OBJECT."
-  ;; (goto-char (region-beginning-or-point))
-  ;; (funcall (object-find object) 1)
-  (setq keyano--current-object object))
+  (seq-let (from to) (keyano--selection)
+    (setq keyano--current-object object)
+    (keyano-next)
+    (keyano--set-secondary-selection from to)))
 
 (defun keyano-char ()
   "Command representing a char object."
@@ -231,8 +260,9 @@ Starts from the beginning of the selection."
 (defun keyano-next-after (&optional n)
   "Move to the Nth occurrence of the current object after the selection."
   (interactive "p")
-  (goto-char (region-end-or-point))
-  (funcall (object-find (keyano--object)) (if n n 1)))
+  (seq-let (_from to) (keyano--selection t)
+    (goto-char to)
+    (funcall (object-find (keyano--object)) (if n n 1))))
 
 (cmd-to-run-for-all 'keyano-next-after)
 
@@ -267,8 +297,8 @@ Starts from the beginning of the selection."
 (defun keyano-expand-backward ()
   "Expand the selection to the previous start of the current object."
   (interactive)
-  (let ((to (region-end-or-point)))
-    (goto-char (region-beginning-or-point))
+  (seq-let (from to) (keyano--selection t)
+    (goto-char from)
     (set-mark to)
     (funcall (object-find-start (keyano--object)) -1)))
 
@@ -277,9 +307,8 @@ Starts from the beginning of the selection."
 (defun keyano-expand-forward ()
   "Expand the selection to the next end of the current object."
   (interactive)
-  (let ((from (region-beginning-or-point)))
-    (goto-char (region-end-or-point))
-    (set-mark from)
+  (seq-let (from to) (keyano--selection t)
+    (keyano--set-selection from to)
     (funcall (object-find-end (keyano--object)) 1)))
 
 (cmd-to-run-for-all 'keyano-expand-forward)
@@ -298,9 +327,11 @@ Starts from the beginning of the selection."
 (defun keyano-add-next ()
   "Select the next occurrence of the current object."
   (interactive)
-  (mc/create-fake-cursor-at-point)
-  (keyano-next-after)
-  (mc/maybe-multiple-cursors-mode))
+  (seq-let (from to) (keyano--selection t)
+    (keyano--set-selection from to)
+    (mc/create-fake-cursor-at-point)
+    (keyano-next-after)
+    (mc/maybe-multiple-cursors-mode)))
 
 (cmd-to-run-once 'keyano-add-next)
 
@@ -313,27 +344,21 @@ Starts from the beginning of the selection."
 
 (cmd-to-run-once 'keyano-add-previous)
 
-(defun keyano-above (from to)
-  "Move the current selection below itself NTH lines down.
-Operates on FROM to TO."
-  (interactive "r")
-  (let ((n (+ from (/ (- to from) 2))))
-    (set-mark nil)
-    (goto-char n)
-    (previous-line)
-    (keyano-expand)))
+(defun keyano-above (&optional nth)
+  "Move the current selection above itself NTH lines above."
+  (interactive "p")
+  (keyano-below (if nth (- nth) -1)))
 
 (cmd-to-run-for-all 'keyano-above)
 
-(defun keyano-below (from to)
-  "Move the current selection below itself NTH lines down.
-Operates on FROM to TO."
-  (interactive "r")
-  (let ((n (+ from (/ (- to from) 2))))
-    (set-mark nil)
-    (goto-char n)
-    (next-line)
-    (keyano-expand)))
+(defun keyano-below (&optional nth)
+  "Move the current selection below itself NTH lines down."
+  (interactive "p")
+  (seq-let (from to) (keyano--selection)
+    (let ((n (+ from (/ (- to from) 2))))
+      (keyano--set-selection nil n)
+      (forward-line (or nth 1))
+      (keyano-expand))))
 
 (cmd-to-run-for-all 'keyano-below)
 
@@ -401,12 +426,11 @@ Operates on FROM to TO."
 (defun keyano-all-in ()
   "Select all of the current object in the current selection."
   (interactive)
-  (let ((to (region-end-or-point))
-	(find (object-find (keyano--object))))
-    (goto-char (region-beginning-or-point))
-    (while (funcall find 1 to)
+  (seq-let (from to) (keyano--selection t)
+    (goto-char from)
+    (while (funcall (object-find (keyano--object)) 1 to)
       (mc/create-fake-cursor-at-point))
-      (mc/maybe-multiple-cursors-mode)))
+    (mc/maybe-multiple-cursors-mode)))
 
 (cmd-to-run-for-all 'keyano-all-in)
 
