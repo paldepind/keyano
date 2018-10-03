@@ -435,7 +435,7 @@ Starts from the beginning of the selection."
 (define-key keyano-command-mode-map "z" 'keyano-undo)
 (define-key keyano-command-mode-map "x" 'keyano-kill)
 (define-key keyano-command-mode-map "c" 'kill-ring-save)
-(define-key keyano-command-mode-map "v" 'yank)
+(define-key keyano-command-mode-map "v" 'keyano-yank)
 
 ;; Right-hand side
 
@@ -511,6 +511,18 @@ Place the cursor at the right side of the region."
 
 (cmd-to-run-for-all 'keyano-kill)
 
+(defun keyano-yank (&optional arg)
+  "Yank after region.  ARG determines what to yank."
+  (interactive "*P")
+  (let ((str (current-kill (cond ((listp arg) 0)
+				 ((eq arg '-) -2)
+				 (t (1- arg))))))
+    (when (string-suffix-p "\n" str)
+      (forward-line))
+    (set-mark (point))
+    (yank)
+    (setq deactivate-mark nil)))
+
 (defun keyano-change ()
   "Kill the current selections and enters insert state."
   (interactive)
@@ -563,7 +575,6 @@ Place the cursor at the right side of the region."
 
 (define-globalized-minor-mode keyano-mode keyano-command-mode
   (lambda ()
-    (message "%s" major-mode)
     (cond
      ((minibufferp)
       (keyano-insert-mode t))
