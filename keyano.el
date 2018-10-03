@@ -542,11 +542,33 @@ Place the cursor at the right side of the region."
   (setq cursor-type 'bar)
   (deactivate-mark))
 
+(defcustom keyano-ignored-modes
+  '(magit-cherry-mode
+    magit-diff-mode
+    magit-log-mode
+    magit-log-select-mode
+    magit-popup-mode
+    magit-popup-sequence-mode
+    magit-process-mode
+    magit-reflog-mode
+    magit-refs-mode
+    magit-revision-mode
+    magit-stash-mode
+    magit-stashes-mode
+    term-mode
+    magit-status-mode)
+  "Modes in which Keyano should not be activated."
+  :type '(repeat symbol)
+  :group 'keyano)
+
 (define-globalized-minor-mode keyano-mode keyano-command-mode
   (lambda ()
-    (if (minibufferp)
-	(keyano-insert-mode t)
-      (keyano-command-mode t))))
+    (message "%s" major-mode)
+    (cond
+     ((minibufferp)
+      (keyano-insert-mode t))
+     ((not (memq major-mode keyano-ignored-modes))
+      (keyano-command-mode t)))))
 
 (provide 'keyano)
 
