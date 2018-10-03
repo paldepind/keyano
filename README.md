@@ -1,5 +1,24 @@
 # Keyano
 
+## Install
+
+Clone the repository from git.
+
+```
+git clone https://github.com/paldepind/keyano.git
+```
+
+Then load it with.
+
+```elisp
+(use-package keyano
+  :ensure nil
+  :load-path "~/path/to/keyano/")
+```
+
+Keyano can then be enabled globally with `M-x keyano-mode` or on a per buffer
+basis by running `M-x keyano-command-mode`.
+
 ## Bindings
 
 ### No modifiers
