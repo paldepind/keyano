@@ -14,11 +14,11 @@ Left-hand side.
 
 Right-hand side.
 
-|                       | Index finder                   |                               |                             |                          |
-| ------------          | ------------------------       | ------------------------      | -                           | ------------------------ |
-| <kbd>j</kbd>          | <kbd>l</kbd> `insert-left`     | <kbd>u</kbd> `above`          | <kbd>y</kbd> `insert-right` | <kbd>;</kbd> `comment`   |
-| <kbd>h</kbd>          | <kbd>n</kbd> `previous`        | <kbd>e</kbd> `below`          | <kbd>i</kbd> `next-in`      | <kbd>o</kbd>             |
-| <kbd>k</kbd> `all-in` | <kbd>m</kbd> | <kbd>,</kbd> `expand` | <kbd>.</kbd>                | <kbd>/</kbd>  |
+|                       | Index finder               |                          |                             |                          |
+| ------------          | ------------------------   | ------------------------ | -                           | ------------------------ |
+| <kbd>j</kbd>          | <kbd>l</kbd> `insert-left` | <kbd>u</kbd> `above`     | <kbd>y</kbd> `insert-right` | <kbd>;</kbd> `comment`   |
+| <kbd>h</kbd>          | <kbd>n</kbd> `previous`    | <kbd>e</kbd> `below`     | <kbd>i</kbd> `next-in`      | <kbd>o</kbd>             |
+| <kbd>k</kbd> `all-in` | <kbd>m</kbd>               | <kbd>,</kbd> `expand`    | <kbd>.</kbd>                | <kbd>/</kbd>             |
 
 ### Shift
 
@@ -35,7 +35,7 @@ Right-hand side.
 |              | Index finder                   |                          |                               |                          |
 | ------------ | ------------------------       | ------------------------ | ------------------------      | ------------------------ |
 | <kbd>j</kbd> | <kbd>l</kbd>                   | <kbd>u</kbd>             | <kbd>y</kbd>                  | <kbd>;</kbd>             |
-| <kbd>h</kbd> | <kbd>n</kbd> `expand-backward` | <kbd>e</kbd>             | <kbd>i</kbd> `expand-forward` | <kbd>o</kbd>             |
+| <kbd>h</kbd> | <kbd>n</kbd> `expand-backward` | <kbd>e</kbd> `inside`    | <kbd>i</kbd> `expand-forward` | <kbd>o</kbd>             |
 | <kbd>k</kbd> | <kbd>m</kbd>                   | <kbd>,</kbd>             | <kbd>.</kbd>                  | <kbd>/</kbd>             |
 
 ### Ctrl

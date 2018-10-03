@@ -91,7 +91,7 @@ If SECONDARY it non-nil the secondary selection is returned if it exists."
 ;; Selectors
 
 (cl-defstruct object
-  find find-start find-end expand kill-range matches)
+  find find-start find-end expand kill-range matches inside)
 
 (defvar keyano--current-object nil)
 
@@ -177,7 +177,30 @@ struct."
        (goto-char (match-beginning 0))
        (set-mark (point))
        (forward-sexp)
-       t))))
+       t))
+   :find-start
+   (lambda (n &optional limit)
+     (when (search-forward "(" limit t n)
+       (goto-char (match-beginning 0))))
+   :find-end
+   (lambda (n &optional limit)
+     (when (search-forward ")" limit t n)
+       (goto-char (match-end 0))))
+   :expand
+   (lambda ()
+     (let* ((ppss (syntax-ppss))
+	    (i (nth 1  ppss)))
+       (when i
+	 (keyano--set-selection i i)
+	 (forward-sexp))))
+   :inside
+   (lambda ()
+     (seq-let (from to) (keyano--selection)
+       (goto-char from)
+       (search-forward "(" to t 1)
+       (set-mark (point))
+       (goto-char to)
+       (search-backward ")" from t 1)))))
 
 (defvar current-selection-object
   (make-object
@@ -252,7 +275,7 @@ Starts from the beginning of the selection."
     ;; Make sure that point is before mark so the search starts inside the
     ;; selection. But, do not remove the mark since `current-selection-object'
     ;; uses it.
-    (keyano--set-selection orig-from orig-to)
+    (keyano--set-selection orig-to orig-from)
     (when (and (funcall (object-find (keyano--object)) arg)
                (= orig-from (region-beginning-or-point))
 	       (= orig-to (region-end-or-point)))
@@ -373,6 +396,13 @@ Starts from the beginning of the selection."
   (interactive "sSearch: ")
   (keyano--object-command (keyano--create-constant-object str)))
 
+(defun keyano-inside ()
+  "Move selection to the inside of the currently selected object."
+  (interactive)
+  (funcall (object-inside (keyano--object))))
+
+(cmd-to-run-for-all 'keyano-inside)
+
 (defvar keyano-command-mode-map (make-sparse-keymap)
   "Keymap used for command mode.")
 
@@ -418,6 +448,7 @@ Starts from the beginning of the selection."
 (define-key keyano-command-mode-map (kbd "C-n") 'keyano-previous)
 (define-key keyano-command-mode-map "N" 'keyano-expand-backward)
 (define-key keyano-command-mode-map "e" 'keyano-below)
+(define-key keyano-command-mode-map "E" 'keyano-inside)
 (define-key keyano-command-mode-map "i" 'keyano-next)
 (define-key keyano-command-mode-map "I" 'keyano-expand-forward)
 (define-key keyano-command-mode-map (kbd "C-i") 'keyano-next-after)
