@@ -79,11 +79,10 @@
 (defun keyano--selection (&optional secondary)
   "Get the beginning and end of the current selection.
 If SECONDARY it non-nil the secondary selection is returned if it exists."
-  (let ((r (if (and secondary keyano--secondary-selection)
-	       keyano--secondary-selection
-	     (if mark-active
-		 (list (region-beginning) (region-end))
-	       (list (point) (point))))))
+  (let ((r (cond ((and secondary keyano--secondary-selection)
+		  keyano--secondary-selection)
+		 (mark-active (list (region-beginning) (region-end)))
+		 (t (list (point) (point))))))
     (keyano--clear-secondary-selection)
     r))
 
@@ -131,9 +130,12 @@ struct."
   (make-object
    :find
    (lambda (n &optional limit)
-     (when (search-forward-regexp full limit t n)
-       (set-mark (match-beginning subexp))
-       (goto-char (match-end subexp))))
+     (when (re-search-forward end limit t n)
+       (let ((a (match-end 0)))
+	 (set-mark (match-end 0))
+	 (goto-char (match-end 0))
+	 (when (re-search-backward start nil t 1)
+	   (goto-char (match-end 0))))))
    :find-start
    (lambda (n &optional limit)
      (when (search-forward-regexp start limit t n)
@@ -146,7 +148,15 @@ struct."
    (lambda ()
      (when (search-forward-regexp end nil t)
        (set-mark (point))
-       (search-backward-regexp start nil t)))))
+       (search-backward-regexp start nil t)))
+   :matches
+   (lambda ()
+     (let ((from (region-beginning-or-point))
+	   (to (region-end-or-point)))
+       (goto-char from)
+       (when (search-forward-regexp full to t 1)
+	 (and (= from (match-beginning 0))
+	      (= to (match-end 0))))))))
 
 (defvar char-object
   (create-regexp-object "." 0 "." "."))
@@ -158,7 +168,7 @@ struct."
   (create-regexp-object "\\<[0-9]+\\(\\.[0-9]+\\)?\\>" 0 "\\<[0-9]" "[0-9]\\>"))
 
 (defvar line-object
-  (let ((object (create-regexp-object "^[\t ]*\\(.*\\)$" 1 "^." ".$")))
+  (let ((object (create-regexp-object "^[\t ]*\\(.*\\)$" 1 "^[ \t]*" ".$")))
     (setf (object-kill-range object)
 	  (lambda ()
 	    (seq-let (from to) (keyano--selection)
@@ -278,8 +288,8 @@ Starts from the beginning of the selection."
     (keyano--set-selection orig-to orig-from)
     (when (and (funcall (object-find (keyano--object)) arg)
                (= orig-from (region-beginning-or-point))
-	       (= orig-to (region-end-or-point)))
-      (goto-char (+ (region-beginning-or-point) (if (< arg 0) -1 1)))
+               (= orig-to (region-end-or-point)))
+      (goto-char (if (< arg 0) (- (region-end-or-point) 1) (+ (region-end-or-point) 1)))
       (funcall (object-find (keyano--object)) arg))))
 
 (cmd-to-run-for-all 'keyano-next)
