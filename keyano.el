@@ -51,7 +51,7 @@
 (defface pink
   '((((background dark)) (:background "pink" :foreground "black"))
     (t (:background "pink")))
-  "Face for hi-lock mode."
+  "Face for secondary selection."
   :group 'hi-lock-faces)
 
 (defun keyano--set-selection (from to)
@@ -63,6 +63,18 @@
 
 (push 'keyano--secondary-selection mc/cursor-specific-vars)
 (push 'keyano--current-object mc/cursor-specific-vars)
+
+(defvar keyano--next-overlay nil)
+(defvar keyano--previous-overlay nil)
+
+(defun keyano--highlight-next-prev ()
+  "Highlight the next and previous instance of the object."
+  (seq-let (from to) (save-mark-and-excursion (keyano-next) (keyano--selection))
+    (move-overlay keyano--next-overlay from to)
+    (overlay-put keyano--next-overlay 'face 'pink))
+  (seq-let (from to) (save-mark-and-excursion (keyano-previous) (keyano--selection))
+    (move-overlay keyano--previous-overlay from to)
+    (overlay-put keyano--previous-overlay 'face 'pink)))
 
 (defun keyano--set-secondary-selection (from to)
   "Set secondary selction starting at FROM and up to TO."
@@ -552,8 +564,17 @@ Place the cursor at the right side of the region."
   "Keyano command mode"
   :lighter " cmd"
   :keymap keyano-command-mode-map
-  (delete-selection-mode 1)
-  (setq cursor-type 'box))
+  (if keyano-command-mode
+      (progn
+	(delete-selection-mode 1)
+	(setq cursor-type 'box)
+	(setq keyano--next-overlay (make-overlay 0 0))
+	(setq keyano--previous-overlay (make-overlay 0 0))
+	(keyano--highlight-next-prev)
+	(add-hook 'post-command-hook 'keyano--highlight-next-prev))
+    (setq keyano--next-overlay (delete-overlay keyano--next-overlay))
+    (setq keyano--previous-overlay (delete-overlay keyano--previous-overlay))
+    (remove-hook 'post-command-hook 'keyano--highlight-next-prev)))
 
 (define-minor-mode keyano-insert-mode
   "Keyano insert mode"
