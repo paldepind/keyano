@@ -288,9 +288,11 @@ struct."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Selectors
 
-(defun keyano-next (&optional arg)
+(defun keyano-next (&optional arg bound)
   "Move to the ARGth occurrence of the current object.
-Starts from the beginning of the selection."
+The optional argument BOUND bounds the search.  Starts from the
+beginning of the selection.  Returns a list of the start and en
+of the found occurrence."
   (interactive "p")
   (when (not arg) (setq arg 1))
   (seq-let (orig-from orig-to) (keyano--selection)
@@ -298,13 +300,24 @@ Starts from the beginning of the selection."
     ;; selection. But, do not remove the mark since `current-selection-object'
     ;; uses it.
     (keyano--set-selection orig-to orig-from)
-    (when (and (funcall (object-find (keyano--object)) arg)
-               (= orig-from (region-beginning-or-point))
-               (= orig-to (region-end-or-point)))
-      (goto-char (if (< arg 0) (- (region-end-or-point) 1) (+ (region-end-or-point) 1)))
-      (funcall (object-find (keyano--object)) arg))))
+    (when (funcall (object-find (keyano--object)) arg bound)
+      (when (and (= orig-from (region-beginning-or-point))
+		 (= orig-to (region-end-or-point)))
+	(goto-char (if (< arg 0) (- (region-end-or-point) 1) (+ (region-end-or-point) 1)))
+	(funcall (object-find (keyano--object)) arg bound))
+      (keyano--selection))))
 
 (cmd-to-run-for-all 'keyano-next)
+
+(defun keyano-previous (&optional arg bound)
+  "Move backwards to the ARGth occurrence of the current object.
+The optional argument BOUND bounds the search.  Starts from the
+beginning of the selection.  Returns a list of the start and en
+of the found occurrence."
+  (interactive "p")
+  (keyano-next (if arg (- arg) -1) bound))
+
+(cmd-to-run-for-all 'keyano-previous)
 
 (defun keyano-next-after (&optional n)
   "Move to the Nth occurrence of the current object after the selection."
@@ -327,14 +340,6 @@ Transposes with Nth occurrence of the current object after the selection."
       (set-mark (- d (- b a))))))
 
 (cmd-to-run-for-all 'keyano-transpose-next)
-
-(defun keyano-previous (&optional arg)
-  "Move backwards to the ARGth occurrence of the current object.
-Starts from the beginning of the selection."
-  (interactive "p")
-  (keyano-next (if arg (- arg) -1)))
-
-(cmd-to-run-for-all 'keyano-previous)
 
 (defun keyano-expand ()
   "Expand the current selection."
@@ -393,25 +398,55 @@ Starts from the beginning of the selection."
 
 (cmd-to-run-once 'keyano-add-previous)
 
+(defvar keyano--column nil)
+
+(defun keyano-below (&optional nth)
+  "Find the object NTH lines below the current selection."
+  (interactive "p")
+  (seq-let (from to) (keyano--selection)
+    (if (> 0 nth) (goto-char to) (goto-char from))
+    (setq from (max (line-beginning-position) from))
+    (setq to (min (line-end-position) to))
+    (let* ((n (+ from (/ (- to from) 2)))
+	   (c (if (and (memq last-command (list #'keyano-below #'keyano-above))
+		       keyano--column)
+		  keyano--column
+		(progn (goto-char n) (current-column)))))
+      (setq keyano--column c)
+      (forward-line (or nth 1))
+      (move-to-column c)
+      (setq mark-active nil)
+      (while
+	  (let* ((next-occ (save-mark-and-excursion
+			     (keyano-next 1 (line-end-position))))
+		 (previous-occ (save-mark-and-excursion
+				 (keyano-previous 1 (line-beginning-position)))))
+	    (cond
+	     ((and next-occ previous-occ)
+	      (if (< (abs (- (cl-second previous-occ) (point)))
+		     (abs (- (cl-first next-occ) (point))))
+		  (keyano--set-selection (cl-first previous-occ) (cl-second previous-occ))
+		(keyano--set-selection (cl-first next-occ) (cl-second next-occ)))
+	      nil)
+	     (next-occ
+	      (keyano--set-selection (cl-first next-occ) (cl-second next-occ))
+	      nil)
+	     (previous-occ
+	      (keyano--set-selection (cl-first previous-occ) (cl-second previous-occ))
+	      nil)
+	     (t
+	      t)))
+	(forward-line (or nth 1))
+	(move-to-column c)))))
+
+(cmd-to-run-for-all 'keyano-below)
+
 (defun keyano-above (&optional nth)
-  "Move the current selection above itself NTH lines above."
+  "Find the object NTH lines above the current selection."
   (interactive "p")
   (keyano-below (if nth (- nth) -1)))
 
 (cmd-to-run-for-all 'keyano-above)
-
-(defun keyano-below (&optional nth)
-  "Move the current selection below itself NTH lines down."
-  (interactive "p")
-  (seq-let (from to) (keyano--selection)
-    (let ((n (+ from (/ (- to from) 2))))
-      (keyano--set-selection nil n)
-      (let ((c (current-column)))
-	(forward-line (or nth 1))
-	(forward-char c)
-	(keyano-expand)))))
-
-(cmd-to-run-for-all 'keyano-below)
 
 (defun keyano-find (str)
   "Find STR."
