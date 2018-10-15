@@ -49,8 +49,8 @@
   (if mark-active (region-end) (point)))
 
 (defface pink
-  '((((background dark)) (:background "pink" :foreground "black"))
-    (t (:background "pink")))
+  '((((background dark)) (:background "light  grey" :foreground "black"))
+    (t (:background "white smoke")))
   "Face for secondary selection."
   :group 'hi-lock-faces)
 
@@ -59,22 +59,23 @@
   (set-mark from)
   (goto-char to))
 
-(defvar keyano--secondary-selection nil)
+(defvar-local keyano--secondary-selection nil)
 
 (push 'keyano--secondary-selection mc/cursor-specific-vars)
 (push 'keyano--current-object mc/cursor-specific-vars)
 
-(defvar keyano--next-overlay nil)
-(defvar keyano--previous-overlay nil)
+(defvar-local keyano--next-overlay nil)
+(defvar-local keyano--previous-overlay nil)
 
 (defun keyano--highlight-next-prev ()
   "Highlight the next and previous instance of the object."
-  (seq-let (from to) (save-mark-and-excursion (keyano-next) (keyano--selection))
-    (move-overlay keyano--next-overlay from to)
-    (overlay-put keyano--next-overlay 'face 'pink))
-  (seq-let (from to) (save-mark-and-excursion (keyano-previous) (keyano--selection))
-    (move-overlay keyano--previous-overlay from to)
-    (overlay-put keyano--previous-overlay 'face 'pink)))
+  (when (not keyano--secondary-selection)
+    (seq-let (from to) (save-mark-and-excursion (keyano-next) (keyano--selection t))
+      (move-overlay keyano--next-overlay from to)
+      (overlay-put keyano--next-overlay 'face 'pink))
+    (seq-let (from to) (save-mark-and-excursion (keyano-previous) (keyano--selection t))
+      (move-overlay keyano--previous-overlay from to)
+      (overlay-put keyano--previous-overlay 'face 'pink))))
 
 (defun keyano--set-secondary-selection (from to)
   "Set secondary selction starting at FROM and up to TO."
@@ -90,7 +91,9 @@
 
 (defun keyano--selection (&optional secondary)
   "Get the beginning and end of the current selection.
-If SECONDARY it non-nil the secondary selection is returned if it exists."
+If SECONDARY it non-nil the secondary selection is returned if it
+exists.  Unless NOCLEAR is non-nil the secondary selection is
+cleared."
   (let ((r (cond ((and secondary keyano--secondary-selection)
 		  keyano--secondary-selection)
 		 (mark-active (list (region-beginning) (region-end)))
@@ -99,10 +102,10 @@ If SECONDARY it non-nil the secondary selection is returned if it exists."
     r))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Selectors
+;; Objects
 
 (cl-defstruct object
-  find find-start find-end expand kill-range matches inside)
+  find find-start find-end find-match-start find-match-end expand kill-range matches inside)
 
 (defvar keyano--current-object nil)
 
@@ -143,7 +146,7 @@ struct."
    :find
    (lambda (n &optional limit)
      (when (re-search-forward end limit t n)
-       (let ((a (match-end 0)))
+       (let ((_a (match-end 0))) ;; FIXME
 	 (set-mark (match-end 0))
 	 (goto-char (match-end 0))
 	 (when (re-search-backward start nil t 1)
@@ -163,12 +166,16 @@ struct."
        (search-backward-regexp start nil t)))
    :matches
    (lambda ()
-     (let ((from (region-beginning-or-point))
-	   (to (region-end-or-point)))
-       (goto-char from)
-       (when (search-forward-regexp full to t 1)
-	 (and (= from (match-beginning 0))
-	      (= to (match-end 0))))))))
+     (save-excursion
+	(let ((from (region-beginning-or-point))
+	      (to (region-end-or-point)))
+	  (and (progn (goto-char from) (looking-at start))
+	       (progn (goto-char to) (looking-back end from nil)))
+	;; (goto-char from)
+	;; (when (search-forward-regexp full to t 1)
+	;;     (and (= from (match-beginning 0))
+	;; 	(= to (match-end 0))))
+	)))))
 
 (defvar char-object
   (create-regexp-object "." 0 "." "."))
@@ -242,8 +249,8 @@ struct."
     (let ((old-object (keyano--object)))
       (setq keyano--current-object object)
       (keyano-next)
-      (if (not (eq object old-object))
-	  (keyano--set-secondary-selection from to)))))
+      (when (not (eq object old-object))
+	(keyano--set-secondary-selection from to)))))
 
 (defun keyano-char ()
   "Command representing a char object."
